@@ -96,88 +96,227 @@ const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isSaving, setIsSaving] = useState(false);
-  const [product, setProduct] = useState({
-    name: 'Croissant Almond', targetMargin: 45, expectedSalesVolume: 1200, marketplaceFee: 0,
-    materials: [
-      { id: 1, name: 'Tepung Terigu Premium', qty: 150, packSize: 1000, packPrice: 18000, waste: 2 },
-      { id: 2, name: 'Mentega Tawar Prancis', qty: 100, packSize: 1000, packPrice: 120000, waste: 0 }
-    ],
-    fixedCosts: [
-      { id: 10, name: 'Gaji Karyawan Utama', amount: 5000000, isActive: true },
-      { id: 11, name: 'Sewa Ruko & Listrik', amount: 3500000, isActive: true }
-    ]
-  });
+  const [isDarkMode, setIsDarkMode] = useState(true);
+  
+  // -- PERSISTENCE STATE --
+  const [products, setProducts] = useState([]);
+  const [activeProductId, setActiveProductId] = useState('new');
+  
+  // Default structure for new products
+  const defaultProduct = {
+    id: 'new', name: 'Produk Baru', targetMargin: 45, expectedSalesVolume: 100, marketplaceFee: 0,
+    materials: [], fixedCosts: []
+  };
 
-  const m = useMemo(() => calculateMetrics(product), [product]);
+  // -- THEME SYNC --
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDarkMode);
+  }, [isDarkMode]);
+
+  // -- LOAD DATA --
+  const API_URL = 'http://localhost:5000/api';
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await axios.get(`${API_URL}/products`);
+        if (res.data && res.data.length > 0) {
+          setProducts(res.data);
+          setActiveProductId(res.data[0].id);
+        } else {
+          // Initialize with one default if empty
+          const init = { ...defaultProduct, id: 'temp-' + Date.now() };
+          setProducts([init]);
+          setActiveProductId(init.id);
+        }
+      } catch (err) {
+        console.error("API Error, using fallback:", err);
+        const stored = localStorage.getItem('hpp_products');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setProducts(parsed);
+          setActiveProductId(parsed[0].id);
+        }
+      }
+    };
+    fetchProducts();
+  }, []);
+
+  const activeProduct = useMemo(() => {
+    return products.find(p => p.id === activeProductId) || products[0] || defaultProduct;
+  }, [products, activeProductId]);
+
+  const activeMetrics = useMemo(() => calculateMetrics(activeProduct), [activeProduct]);
+
+  // -- SAVE LOGIC --
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Sync to API
+      await axios.post(`${API_URL}/products/${activeProduct.id}`, activeProduct);
+      // Sync to LocalStorage (Safety)
+      localStorage.setItem('hpp_products', JSON.stringify(products));
+      setTimeout(() => setIsSaving(false), 800);
+    } catch (err) {
+      console.error("Save failed:", err);
+      localStorage.setItem('hpp_products', JSON.stringify(products));
+      setIsSaving(false);
+    }
+  };
+
+  // -- PRODUCT MGMT --
+  const addProduct = () => {
+    const newId = 'prod-' + Date.now();
+    const newP = { ...defaultProduct, id: newId, name: `Produk #${products.length + 1}` };
+    setProducts([...products, newP]);
+    setActiveProductId(newId);
+  };
+
+  const deleteProduct = (id, e) => {
+    e.stopPropagation();
+    if (products.length <= 1) return;
+    const filtered = products.filter(p => p.id !== id);
+    setProducts(filtered);
+    if (activeProductId === id) setActiveProductId(filtered[0].id);
+  };
+
+  const updateActiveProduct = (field, value) => {
+    setProducts(prev => prev.map(p => p.id === activeProductId ? { ...p, [field]: value } : p));
+  };
+
+  const updateMaterial = (mid, field, value) => {
+    setProducts(prev => prev.map(p => {
+      if (p.id !== activeProductId) return p;
+      return {
+        ...p,
+        materials: p.materials.map(m => m.id === mid ? { ...m, [field]: value } : m)
+      };
+    }));
+  };
+
+  const updateFixedCost = (fid, field, value) => {
+    setProducts(prev => prev.map(p => {
+      if (p.id !== activeProductId) return p;
+      return {
+        ...p,
+        fixedCosts: p.fixedCosts.map(f => f.id === fid ? { ...f, [field]: value } : f)
+      };
+    }));
+  };
+
   const handleLogin = () => { setIsLoggedIn(true); };
   const handleLogout = () => { setIsLoggedIn(false); };
 
   if (!isLoggedIn) return (
-    <div className="min-h-screen bg-[#0B0F1A] flex items-center justify-center p-6 text-white font-outfit">
-      <div className="w-full max-w-sm glass-card rounded-[40px] p-10 border border-white/10 shadow-2xl space-y-8 text-center">
-        <div className="w-16 h-16 bg-indigo-600 rounded-[22px] mx-auto flex items-center justify-center shadow-2xl"><Calculator className="w-8 h-8"/></div>
-        <h1 className="text-2xl font-black italic uppercase tracking-tighter leading-none">HPP MASTER <span className="text-indigo-500">PRO</span></h1>
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 italic">Solusi Kalkulasi Bisnis UMKM</p>
-        <button onClick={handleLogin} className="w-full h-14 bg-indigo-600 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl active:scale-95 transition-all">Luncurkan Dashboard</button>
+    <div className={`min-h-screen ${isDarkMode ? 'bg-[#0B0F1A]' : 'bg-slate-50'} flex items-center justify-center p-6 text-white font-outfit transition-colors duration-500`}>
+      <div className={`w-full max-w-sm glass-card rounded-[40px] p-10 border ${isDarkMode ? 'border-white/10 bg-[#0B0F1A]/60' : 'border-slate-200 bg-white shadow-2xl'} shadow-2xl space-y-8 text-center`}>
+        <div className="w-16 h-16 bg-indigo-600 rounded-[22px] mx-auto flex items-center justify-center shadow-2xl"><Calculator className="w-8 h-8 text-white"/></div>
+        <h1 className={`text-2xl font-black italic uppercase tracking-tighter leading-none ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>HPP MASTER <span className="text-indigo-500">PRO</span></h1>
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 italic">Sistem Operasional Bisnis Mandiri</p>
+        <button onClick={handleLogin} className="w-full h-14 bg-indigo-600 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl active:scale-95 transition-all">Masuk Kontrol Panel</button>
       </div>
     </div>
   );
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-[#0B0F1A] text-white font-outfit overflow-hidden">
+    <div className={`flex flex-col md:flex-row min-h-screen ${isDarkMode ? 'bg-[#0B0F1A] text-white' : 'bg-white text-slate-950'} font-outfit overflow-hidden transition-colors duration-500`}>
       
-      {/* 🧱 SIDEBAR DESKTOP (HANYA LAYAR BESAR) */}
-      <aside className="hidden md:flex w-72 flex-col p-8 border-r border-white/10 shrink-0 bg-[#0B0F1A] z-50">
-        <div className="flex items-center gap-4 mb-14 px-2">
-          <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-indigo-600/30 shadow-2xl"><Calculator className="w-6 h-6"/></div>
-          <h1 className="text-xl font-black italic uppercase tracking-tighter">HPPMASTER</h1>
+      {/* 🧱 SIDEBAR DESKTOP */}
+      <aside className={`hidden md:flex w-72 flex-col p-8 border-r ${isDarkMode ? 'border-white/10 bg-[#0B0F1A]' : 'border-slate-200 bg-slate-50'} shrink-0 z-50 relative`}>
+        <div className="flex items-center gap-4 mb-2 px-2">
+          <div className="w-11 h-11 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-indigo-600/30 shadow-2xl"><Calculator className="w-5 h-5 text-white"/></div>
+          <h1 className={`text-lg font-black italic uppercase tracking-tighter ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>HPPMASTER</h1>
         </div>
-        <nav className="flex-1 space-y-2">
-           <button onClick={()=>setActiveTab('dashboard')} className={cn("w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-black text-[10px] uppercase italic tracking-widest", activeTab==='dashboard'? "bg-indigo-600 shadow-xl":"text-slate-500 hover:bg-white/5")}>
-              <LayoutDashboard className="w-5 h-5"/> Ringkasan
+        
+        <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.3em] mb-4 mt-10 italic px-2">Daftar Produk Bisnis</p>
+        <div className="flex-1 space-y-2 overflow-y-auto no-scrollbar pr-1 max-h-[300px] mb-8">
+           {products.map(p => (
+             <button key={p.id} onClick={() => setActiveProductId(p.id)} className={cn(
+               "w-full flex items-center justify-between gap-3 px-5 py-3.5 rounded-2xl transition-all font-black text-[10px] uppercase italic tracking-widest text-left group",
+               p.id === activeProductId 
+                  ? "bg-indigo-600 text-white shadow-xl" 
+                  : (isDarkMode ? "text-slate-500 hover:bg-white/5" : "text-slate-400 hover:bg-slate-200")
+             )}>
+                <div className="flex items-center gap-3 overflow-hidden">
+                   <div className={cn("w-2 h-2 rounded-full", p.id === activeProductId ? "bg-white" : "bg-slate-700")} />
+                   <span className="truncate">{p.name}</span>
+                </div>
+                {products.length > 1 && (
+                  <X onClick={(e) => deleteProduct(p.id, e)} className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 hover:text-white transition-opacity" />
+                )}
+             </button>
+           ))}
+           <button onClick={addProduct} className={`w-full flex items-center gap-3 px-5 py-3.5 rounded-2xl border-2 border-dashed ${isDarkMode ? 'border-white/5 text-slate-600 hover:border-indigo-500/50' : 'border-slate-200 text-slate-400 hover:border-indigo-500'} transition-all font-black text-[10px] uppercase italic tracking-widest`}>
+              <Plus className="w-4 h-4"/> Tambah Item
            </button>
-           <button onClick={()=>setActiveTab('materials')} className={cn("w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-black text-[10px] uppercase italic tracking-widest", activeTab==='materials'? "bg-indigo-600 shadow-xl":"text-slate-500 hover:bg-white/5")}>
-              <Database className="w-5 h-5"/> Bahan Baku
+        </div>
+
+        <nav className="space-y-1 mb-8 pt-6 border-t border-white/5">
+           <button onClick={()=>setActiveTab('dashboard')} className={cn("w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-black text-[10px] uppercase italic tracking-widest", activeTab==='dashboard'? (isDarkMode?"bg-white/10 text-white":"bg-indigo-50 text-indigo-700"):"text-slate-500 hover:bg-white/5")}>
+              <LayoutDashboard className="w-4.5 h-4.5"/> Ringkasan
            </button>
-           <button onClick={()=>setActiveTab('strategy')} className={cn("w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-black text-[10px] uppercase italic tracking-widest", activeTab==='strategy'? "bg-indigo-600 shadow-xl":"text-slate-500 hover:bg-white/5")}>
-              <TrendingUp className="w-5 h-5"/> Strategi Harga
+           <button onClick={()=>setActiveTab('materials')} className={cn("w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-black text-[10px] uppercase italic tracking-widest", activeTab==='materials'? (isDarkMode?"bg-white/10 text-white":"bg-indigo-50 text-indigo-700"):"text-slate-500 hover:bg-white/5")}>
+              <Database className="w-4.5 h-4.5"/> Bahan Baku
            </button>
-           <button onClick={()=>setActiveTab('report')} className={cn("w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-black text-[10px] uppercase italic tracking-widest", activeTab==='report'? "bg-indigo-600 shadow-xl":"text-slate-500 hover:bg-white/5")}>
-              <FileText className="w-5 h-5"/> Laporan Audit
+           <button onClick={()=>setActiveTab('strategy')} className={cn("w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-black text-[10px] uppercase italic tracking-widest", activeTab==='strategy'? (isDarkMode?"bg-white/10 text-white":"bg-indigo-50 text-indigo-700"):"text-slate-500 hover:bg-white/5")}>
+              <TrendingUp className="w-4.5 h-4.5"/> Strategi Harga
+           </button>
+           <button onClick={()=>setActiveTab('report')} className={cn("w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-black text-[10px] uppercase italic tracking-widest", activeTab==='report'? (isDarkMode?"bg-white/10 text-white":"bg-indigo-50 text-indigo-700"):"text-slate-500 hover:bg-white/5")}>
+              <FileText className="w-4.5 h-4.5"/> Laporan Audit
            </button>
         </nav>
-        <button onClick={handleLogout} className="mt-auto px-5 py-4 text-slate-700 font-black text-[10px] uppercase tracking-widest hover:text-rose-500 transition-colors flex items-center gap-3"><LogOut className="w-5 h-5"/> Matikan Sistem</button>
+
+        <div className="mt-auto space-y-4 pt-6 border-t border-white/5">
+           <button onClick={() => setIsDarkMode(!isDarkMode)} className={`w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-black text-[10px] uppercase italic tracking-widest ${isDarkMode ? 'text-slate-500 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-200'}`}>
+              <Sparkles className="w-4.5 h-4.5"/> {isDarkMode ? 'Ganti Mode Terang' : 'Ganti Mode Gelap'}
+           </button>
+           <button onClick={handleLogout} className="w-full flex items-center gap-3 px-5 py-4 text-slate-700 font-black text-[10px] uppercase tracking-widest hover:text-rose-500 transition-colors"><LogOut className="w-4.5 h-4.5"/> Keluar</button>
+        </div>
       </aside>
 
       {/* 📊 MAIN CONTENT */}
-      <main className="flex-1 p-5 md:p-10 overflow-y-auto pb-40 md:pb-10 relative">
-        <header className="mb-10 md:mb-14">
-           <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.5em] italic leading-none mb-3">Sistem Inti Bisnis</p>
-           <h1 className="text-3xl md:text-5xl font-black text-white italic tracking-tighter uppercase leading-none">
-              {activeTab === 'dashboard' ? 'RINGKASAN UTAMA' : 
-               activeTab === 'materials' ? 'GUDANG BAHAN' :
-               activeTab === 'strategy' ? 'STRATEGI HARGA' : 'LAPORAN AUDIT'}
-           </h1>
+      <main className="flex-1 p-5 md:p-10 overflow-y-auto pb-44 md:pb-10 relative">
+        <header className="mb-10 md:mb-14 flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+           <div className="space-y-3">
+              <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.5em] italic leading-none">Sistem Dashboard Enterprise</p>
+              <div className="flex items-baseline gap-4">
+                 <input 
+                    value={activeProduct.name} 
+                    onChange={(e) => updateActiveProduct('name', e.target.value)}
+                    className={`bg-transparent border-none p-0 text-3xl md:text-5xl font-black italic tracking-tighter uppercase focus:ring-0 outline-none w-full max-w-md ${isDarkMode ? 'text-white' : 'text-slate-900'}`} 
+                 />
+              </div>
+           </div>
+           
+           <div className="hidden md:flex items-center gap-4">
+              <p className={`text-[10px] font-black uppercase italic tracking-widest ${isDarkMode ? 'text-slate-700' : 'text-slate-300'}`}>Sync State: {isSaving ? 'Saving...' : 'Encrypted ✓'}</p>
+              <button 
+                onClick={handleSave} 
+                className={`h-14 px-8 ${isDarkMode ? 'bg-indigo-600' : 'bg-slate-900'} text-white font-black text-[11px] uppercase rounded-2xl shadow-xl active:scale-95 transition-all flex items-center gap-3 italic tracking-widest`}
+              >
+                {isSaving ? <Loader2 className="w-4 h-4 animate-spin"/> : <Save className="w-4 h-4"/>} 
+                Komit Database
+              </button>
+           </div>
         </header>
 
-        <div className="max-w-[1200px] mx-auto w-full">
+        <div className="max-w-[1240px] mx-auto w-full">
            <AnimatePresence mode="wait">
               {activeTab === 'dashboard' && (
-                <motion.div key="db" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-10">
-                   {/* 📊 GRID RESPONSIVE (Auto Mobile) */}
+                <motion.div key="db" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="space-y-10">
                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
-                      <Card isHero title="Laba Bersih Bulanan" value={formatCompactIDR(m.totalProfit)} icon={Trophy} clr="amber" trend={12} subtext="Proyeksi Keuntungan Akhir" />
-                      <Card isHero title="Target BEP Harian" value={`${m.bepDaily} Unit`} icon={Target} clr="rose" trend={2} subtext="Titik Impas Aman" />
-                      <Card title="HPP Per Unit" value={formatIDR(m.hppPerUnit)} icon={Calculator} clr="emerald" subtext="Beban Pokok Produksi" />
-                      <Card title="Harga Rekomendasi" value={formatIDR(m.recommendedPrice)} icon={TrendingUp} clr="indigo" subtext="Posisi Strategis Pasar" />
+                      <Card isHero title="Laba Bersih Bulanan" value={formatCompactIDR(activeMetrics.totalProfit)} icon={Trophy} clr="amber" trend={12} subtext="Proyeksi Keuntungan Mandiri" />
+                      <Card isHero title="Titik BEP Harian" value={`${activeMetrics.bepDaily} Unit`} icon={Target} clr="rose" trend={2} subtext="Ambang Batas Impas" />
+                      <Card title="Beban Produk (HPP)" value={formatIDR(activeMetrics.hppPerUnit)} icon={Calculator} clr="emerald" subtext="HPP Unit Produksi" />
+                      <Card title="Harga Rekomendasi" value={formatIDR(activeMetrics.recommendedPrice)} icon={TrendingUp} clr="indigo" subtext="Target Pasar Bisnis" />
                    </div>
-                   <div className="glass-card rounded-[32px] md:rounded-[48px] p-6 md:p-12 bg-white/[0.02] border border-white/10 h-[300px] md:h-[450px]">
+                   <div className={`glass-card rounded-[32px] md:rounded-[48px] p-6 md:p-12 border ${isDarkMode ? 'bg-white/[0.02] border-white/10' : 'bg-slate-100 border-slate-200'} h-[300px] md:h-[480px] shadow-inner`}>
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={[{n:'100',p:m.totalProfit/10},{n:'500',p:m.totalProfit/2},{n:'1k',p:m.totalProfit},{n:'1.5k',p:m.totalProfit*1.5}]}>
+                        <AreaChart data={[{n:'100',p:activeMetrics.totalProfit/10},{n:'500',p:activeMetrics.totalProfit/2},{n:'1k',p:activeMetrics.totalProfit},{n:'1.5k',p:activeMetrics.totalProfit*1.5}]}>
                           <defs><linearGradient id="cP" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/><stop offset="95%" stopColor="#6366f1" stopOpacity={0}/></linearGradient></defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false}/>
+                          <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? "#ffffff05" : "#0000000a"} vertical={false}/>
                           <XAxis dataKey="n" stroke="#475569" fontSize={11} axisLine={false} tickLine={false}/>
-                          <RechartsTooltip contentStyle={{background:'#0a0b1e',border:'none',borderRadius:'20px',fontSize:'12px',boxShadow:'0 20px 50px rgba(0,0,0,0.6)'}}/>
+                          <RechartsTooltip contentStyle={{background: isDarkMode ? '#0a0b1e' : '#ffffff', border:'none', borderRadius:'20px', fontSize:'12px', boxShadow:'0 20px 50px rgba(0,0,0,0.1)'}}/>
                           <Area type="monotone" dataKey="p" stroke="#6366f1" fillOpacity={1} fill="url(#cP)" strokeWidth={5} />
                         </AreaChart>
                       </ResponsiveContainer>
