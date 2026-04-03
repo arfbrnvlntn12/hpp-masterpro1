@@ -112,8 +112,8 @@ const App = () => {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDarkMode);
   }, [isDarkMode]);
-
-  const API_URL = 'http://localhost:5000/api';
+  // -- LOAD DATA --
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -123,7 +123,7 @@ const App = () => {
           setProducts(res.data);
           setActiveProductId(res.data[0].id);
         } else {
-          const init = { ...defaultProduct, id: 'temp-' + Date.now() };
+          const init = { ...defaultProduct, id: 'temp-' + Date.now(), name: 'Produk Contoh' };
           setProducts([init]);
           setActiveProductId(init.id);
         }
@@ -134,6 +134,11 @@ const App = () => {
           const parsed = JSON.parse(stored);
           setProducts(parsed);
           setActiveProductId(parsed[0].id);
+        } else {
+          // ENSURE AT LEAST ONE PRODUCT EXISTS EVEN ON ERROR
+          const init = { ...defaultProduct, id: 'err-' + Date.now(), name: 'Produk Offline' };
+          setProducts([init]);
+          setActiveProductId(init.id);
         }
       }
     };
@@ -141,22 +146,22 @@ const App = () => {
   }, []);
 
   const activeProduct = useMemo(() => {
-    return products.find(p => p.id === activeProductId) || products[0] || defaultProduct;
+    return products.find(p => p.id === activeProductId) || products[0] || { ...defaultProduct, id: 'fb-' + Date.now() };
   }, [products, activeProductId]);
 
   const m = useMemo(() => calculateMetrics(activeProduct), [activeProduct]);
 
+  // -- SAVE LOGIC --
   const handleSave = async () => {
     setIsSaving(true);
     try {
       await axios.post(`${API_URL}/products/${activeProduct.id}`, activeProduct);
-      localStorage.setItem('hpp_products', JSON.stringify(products));
-      setTimeout(() => setIsSaving(false), 800);
     } catch (err) {
-      console.error("Save failed:", err);
-      localStorage.setItem('hpp_products', JSON.stringify(products));
-      setIsSaving(false);
+      console.warn("API Save failed, syncing to LocalStorage only.");
     }
+    // Always sync to LocalStorage as a reliable secondary
+    localStorage.setItem('hpp_products', JSON.stringify(products));
+    setTimeout(() => setIsSaving(false), 800);
   };
 
   const addProduct = () => {
