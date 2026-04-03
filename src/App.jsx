@@ -226,24 +226,36 @@ const App = () => {
               )}
 
               {activeTab === 'report' && (
-                <motion.div key="rep" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-4xl mx-auto space-y-10">
-                   <div className="bg-white text-slate-900 rounded-[48px] md:rounded-[64px] p-10 md:p-20 shadow-2xl shadow-black/50 min-h-[800px] border border-slate-100 font-bold relative overflow-hidden">
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.05] rotate-[20deg] text-[180px] font-black pointer-events-none select-none tracking-widest italic">AUDIT</div>
-                      <div className="flex justify-between items-start border-b-[6px] border-slate-900 pb-12 mb-16 relative z-10">
-                         <div><h1 className="text-4xl md:text-6xl font-black uppercase italic tracking-tighter leading-none border-l-[18px] border-indigo-600 pl-8">BUSINESS <span className="text-indigo-600">AUDIT</span></h1><p className="text-[12px] font-black uppercase tracking-[0.4em] italic mt-3 text-slate-400">Enterprise Strategy Suite v3.2</p></div>
-                         <div className="w-20 h-20 bg-slate-900 rounded-[28px] flex items-center justify-center text-white"><LucidePieChart className="w-10 h-10"/></div>
+                <motion.div key="rep" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="max-w-4xl mx-auto space-y-6 md:space-y-10">
+                   <div className="bg-white text-slate-900 rounded-[32px] md:rounded-[64px] p-6 sm:p-12 md:p-20 shadow-[0_40px_80px_rgba(0,0,0,0.5)] min-h-[700px] md:min-h-[900px] border border-slate-100 font-bold relative overflow-hidden">
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.03] rotate-[20deg] text-[100px] md:text-[180px] font-black pointer-events-none select-none tracking-widest italic leading-none whitespace-nowrap">AUDIT REPORT</div>
+                      
+                      <div className="flex justify-between items-start border-b-[4px] md:border-b-[6px] border-slate-900 pb-8 md:pb-12 mb-10 md:mb-16 relative z-10">
+                         <div className="space-y-2 md:space-y-4">
+                            <h1 className="text-2xl sm:text-4xl md:text-6xl font-black uppercase italic tracking-tighter leading-none border-l-[12px] md:border-l-[18px] border-indigo-600 pl-4 md:pl-8">BUSINESS <span className="text-indigo-600">AUDIT</span></h1>
+                            <p className="text-[10px] md:text-[12px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] italic mt-2 text-slate-400">Master Strategy Suite v3.2</p>
+                         </div>
+                         <div className="hidden sm:flex w-16 h-16 md:w-20 md:h-20 bg-slate-900 rounded-[22px] md:rounded-[28px] items-center justify-center text-white"><LucidePieChart className="w-8 h-8 md:w-10 md:h-10"/></div>
                       </div>
 
-                      {/* 🎯 KPI SECTION (Mobile Friendly 2x2) */}
-                      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 mb-16 relative z-10 font-black italic">
-                        <div className="bg-slate-100 rounded-[32px] p-8 text-center"><p className="text-[10px] text-slate-400 uppercase leading-none mb-2 tracking-widest italic leading-none">Price</p><p className="text-xl md:text-2xl">{formatCompactIDR(m.recommendedPrice).replace('Rp','').trim()}</p></div>
-                        <div className="bg-indigo-50 rounded-[32px] p-8 text-center text-indigo-700"><p className="text-[10px] text-indigo-400 uppercase leading-none mb-2 tracking-widest italic leading-none">HPP</p><p className="text-xl md:text-2xl">{formatCompactIDR(m.hppPerUnit).replace('Rp','').trim()}</p></div>
-                        <div className="bg-rose-50 rounded-[32px] p-8 text-center text-rose-700"><p className="text-[10px] text-rose-500 uppercase leading-none mb-2 tracking-widest italic leading-none">BEP</p><p className="text-4xl leading-none">{m.bepDaily}</p></div>
-                        <div className="bg-slate-900 rounded-[32px] p-8 text-center text-white shadow-xl"><p className="text-[10px] text-slate-500 uppercase leading-none mb-2 tracking-widest italic leading-none">Profit</p><p className="text-xl md:text-2xl text-indigo-400">{formatCompactIDR(m.totalProfit).replace('Rp','').trim()}</p></div>
+                      {/* 🎯 KPI SECTION (Calibrated for Mobile 2x2) */}
+                      <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-4 mb-10 md:mb-16 relative z-10 font-black italic">
+                        <div className="bg-slate-100 rounded-2xl md:rounded-[32px] p-5 md:p-8 text-center border border-slate-200"><p className="text-[9px] md:text-[10px] text-slate-400 uppercase leading-none mb-2 tracking-widest italic leading-none">Retail</p><p className="text-lg md:text-2xl">{formatCompactIDR(m.recommendedPrice).replace('Rp','').trim()}</p></div>
+                        <div className="bg-indigo-50 rounded-2xl md:rounded-[32px] p-5 md:p-8 text-center text-indigo-700 border border-indigo-100"><p className="text-[9px] md:text-[10px] text-indigo-400 uppercase leading-none mb-2 tracking-widest italic leading-none">HPP</p><p className="text-lg md:text-2xl">{formatCompactIDR(m.hppPerUnit).replace('Rp','').trim()}</p></div>
+                        <div className="bg-rose-50 rounded-2xl md:rounded-[32px] p-5 md:p-8 text-center text-rose-700 border border-rose-100"><p className="text-[9px] md:text-[10px] text-rose-500 uppercase leading-none mb-2 tracking-widest italic leading-none">Goal</p><p className="text-3xl md:text-5xl leading-none">{m.bepDaily}</p></div>
+                        <div className="bg-slate-900 rounded-2xl md:rounded-[32px] p-5 md:p-8 text-center text-white shadow-xl"><p className="text-[9px] md:text-[10px] text-slate-500 uppercase leading-none mb-2 tracking-widest italic leading-none">Net Est</p><p className="text-lg md:text-2xl text-indigo-400">{formatCompactIDR(m.totalProfit).replace('Rp','').trim()}</p></div>
                       </div>
 
-                      <div className="p-10 md:p-16 bg-slate-50 border-l-[12px] border-indigo-600 rounded-r-[56px] italic leading-[2.2] text-slate-600 text-[18px] md:text-[20px] text-justify relative z-10 font-bold">Audit Intelligence mendeteksi efisiensi operasional sistem tetap stabil. Target minimal harian <span className="text-indigo-900 font-black underline mx-2">{m.bepDaily} UNIT</span> wajib dipertahankan untuk mengimbangi beban organisasi sebesar <span className="text-rose-800 font-black mx-2">{formatIDR(m.totalFixedMonthly)}</span> per bulan.</div>
-                      <button onClick={()=>window.print()} className="w-full h-24 bg-slate-900 text-white rounded-[40px] text-lg font-black uppercase mt-12 shadow-2xl flex items-center justify-center gap-4 italic tracking-widest print:hidden active:scale-95 transition-all"><Printer className="w-7 h-7"/> DOWNLOAD FINAL PDF REPORT</button>
+                      <div className="p-8 md:p-16 bg-slate-50 border-l-[8px] md:border-l-[12px] border-indigo-600 rounded-r-[32px] md:rounded-r-[56px] italic leading-[2.0] md:leading-[2.2] text-slate-600 text-[14px] sm:text-[16px] md:text-[18px] text-justify relative z-10 font-bold shadow-inner">
+                         Audit Intelligence mendeteksi efisiensi operasional sistem tetap stabil. Target minimal harian <span className="text-indigo-900 font-black underline mx-1">{m.bepDaily} UNIT</span> wajib dipertahankan untuk mengimbangi beban organisasi sebesar <span className="text-rose-800 font-black mx-1">{formatIDR(m.totalFixedMonthly)}</span> per bulan.
+                      </div>
+                      
+                      <div className="mt-10 md:mt-12 flex justify-center"><button onClick={()=>window.print()} className="w-full h-16 md:h-24 bg-slate-900 text-white rounded-[24px] md:rounded-[40px] text-xs md:text-lg font-black uppercase shadow-2xl flex items-center justify-center gap-3 md:gap-4 italic tracking-widest print:hidden active:scale-95 transition-all outline-none"><Printer className="w-4 h-4 md:w-7 md:h-7"/> DOWNLOAD PDF AUDIT</button></div>
+                      
+                      <div className="absolute bottom-8 left-8 right-8 hidden sm:flex justify-between items-center opacity-20 text-[9px] font-black uppercase tracking-[0.4em] italic leading-none pt-8 border-t border-slate-100">
+                         <span>Enterprise v3.2</span>
+                         <span>ID-GEN: {Math.random().toString(36).substr(2, 12).toUpperCase()}</span>
+                      </div>
                    </div>
                 </motion.div>
               )}
