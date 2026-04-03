@@ -3,7 +3,7 @@ import {
   Plus, Trash2, Calculator, TrendingUp, Target, 
   Zap, Printer, Home, Layers, Save, 
   FileText, LayoutDashboard, Database, X, ArrowUpRight, ArrowDownRight,
-  Loader2, LogOut, Trophy, Gem, Sparkles, PieChart as LucidePieChart, Send, CheckCircle2
+  Loader2, LogOut, Trophy, Gem, Sparkles, PieChart as LucidePieChart, CheckCircle2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -54,7 +54,7 @@ const calculateMetrics = (product) => {
   };
 };
 
-// --- REUSABLE COMPONENTS (PATERN USER) ---
+// --- KOMPONEN REUSABLE (Pola Master) ---
 
 function Card({ title, value, subtext, icon: Icon, clr = "indigo", trend = null, isHero = false }) {
   return (
@@ -99,12 +99,12 @@ const App = () => {
   const [product, setProduct] = useState({
     name: 'Croissant Almond', targetMargin: 45, expectedSalesVolume: 1200, marketplaceFee: 0,
     materials: [
-      { id: 1, name: 'Tepung Terigu', qty: 150, packSize: 1000, packPrice: 18000, waste: 2 },
-      { id: 2, name: 'Mentega Tawar', qty: 100, packSize: 1000, packPrice: 120000, waste: 0 }
+      { id: 1, name: 'Tepung Terigu Premium', qty: 150, packSize: 1000, packPrice: 18000, waste: 2 },
+      { id: 2, name: 'Mentega Tawar Prancis', qty: 100, packSize: 1000, packPrice: 120000, waste: 0 }
     ],
     fixedCosts: [
-      { id: 10, name: 'Gaji Karyawan', amount: 5000000, isActive: true },
-      { id: 11, name: 'Sewa Ruko', amount: 3500000, isActive: true }
+      { id: 10, name: 'Gaji Karyawan Utama', amount: 5000000, isActive: true },
+      { id: 11, name: 'Sewa Ruko & Listrik', amount: 3500000, isActive: true }
     ]
   });
 
@@ -116,8 +116,9 @@ const App = () => {
     <div className="min-h-screen bg-[#0B0F1A] flex items-center justify-center p-6 text-white font-outfit">
       <div className="w-full max-w-sm glass-card rounded-[40px] p-10 border border-white/10 shadow-2xl space-y-8 text-center">
         <div className="w-16 h-16 bg-indigo-600 rounded-[22px] mx-auto flex items-center justify-center shadow-2xl"><Calculator className="w-8 h-8"/></div>
-        <h1 className="text-2xl font-black italic uppercase tracking-tighter">HPPMASTER <span className="text-indigo-500">PRO</span></h1>
-        <button onClick={handleLogin} className="w-full h-14 bg-indigo-600 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl active:scale-95 transition-all">Launch Enterprise</button>
+        <h1 className="text-2xl font-black italic uppercase tracking-tighter leading-none">HPP MASTER <span className="text-indigo-500">PRO</span></h1>
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 italic">Solusi Kalkulasi Bisnis UMKM</p>
+        <button onClick={handleLogin} className="w-full h-14 bg-indigo-600 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl active:scale-95 transition-all">Luncurkan Dashboard</button>
       </div>
     </div>
   );
@@ -125,7 +126,7 @@ const App = () => {
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-[#0B0F1A] text-white font-outfit overflow-hidden">
       
-      {/* 🧱 SIDEBAR DESKTOP */}
+      {/* 🧱 SIDEBAR DESKTOP (HANYA LAYAR BESAR) */}
       <aside className="hidden md:flex w-72 flex-col p-8 border-r border-white/10 shrink-0 bg-[#0B0F1A] z-50">
         <div className="flex items-center gap-4 mb-14 px-2">
           <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-indigo-600/30 shadow-2xl"><Calculator className="w-6 h-6"/></div>
@@ -145,26 +146,30 @@ const App = () => {
               <FileText className="w-5 h-5"/> Laporan Audit
            </button>
         </nav>
-        <button onClick={handleLogout} className="mt-auto px-5 py-4 text-slate-700 font-black text-[10px] uppercase tracking-widest hover:text-rose-500 transition-colors flex items-center gap-3"><LogOut className="w-5 h-5"/> Shutdown</button>
+        <button onClick={handleLogout} className="mt-auto px-5 py-4 text-slate-700 font-black text-[10px] uppercase tracking-widest hover:text-rose-500 transition-colors flex items-center gap-3"><LogOut className="w-5 h-5"/> Matikan Sistem</button>
       </aside>
 
       {/* 📊 MAIN CONTENT */}
-      <main className="flex-1 p-5 md:p-10 overflow-y-auto pb-36 md:pb-10 relative">
+      <main className="flex-1 p-5 md:p-10 overflow-y-auto pb-40 md:pb-10 relative">
         <header className="mb-10 md:mb-14">
-           <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.5em] italic leading-none mb-3">Enterprise Core System</p>
-           <h1 className="text-3xl md:text-5xl font-black text-white italic tracking-tighter uppercase leading-none">{activeTab.toUpperCase()}</h1>
+           <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.5em] italic leading-none mb-3">Sistem Inti Bisnis</p>
+           <h1 className="text-3xl md:text-5xl font-black text-white italic tracking-tighter uppercase leading-none">
+              {activeTab === 'dashboard' ? 'RINGKASAN UTAMA' : 
+               activeTab === 'materials' ? 'GUDANG BAHAN' :
+               activeTab === 'strategy' ? 'STRATEGI HARGA' : 'LAPORAN AUDIT'}
+           </h1>
         </header>
 
         <div className="max-w-[1200px] mx-auto w-full">
            <AnimatePresence mode="wait">
               {activeTab === 'dashboard' && (
                 <motion.div key="db" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-10">
-                   {/* 📊 RESPONSIVE GRID (Auto Mobile) */}
+                   {/* 📊 GRID RESPONSIVE (Auto Mobile) */}
                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
-                      <Card isHero title="Monthly Profit" value={formatCompactIDR(m.totalProfit)} icon={Trophy} clr="amber" trend={12} subtext="Financial Output" />
-                      <Card isHero title="BEP target" value={`${m.bepDaily} Unit`} icon={Target} clr="rose" trend={2} subtext="Safe Breakeven" />
-                      <Card title="Unit HPP cost" value={formatIDR(m.hppPerUnit)} icon={Calculator} clr="emerald" subtext="Production Base" />
-                      <Card title="Retail Price" value={formatIDR(m.recommendedPrice)} icon={TrendingUp} clr="indigo" subtext="Market Position" />
+                      <Card isHero title="Laba Bersih Bulanan" value={formatCompactIDR(m.totalProfit)} icon={Trophy} clr="amber" trend={12} subtext="Proyeksi Keuntungan Akhir" />
+                      <Card isHero title="Target BEP Harian" value={`${m.bepDaily} Unit`} icon={Target} clr="rose" trend={2} subtext="Titik Impas Aman" />
+                      <Card title="HPP Per Unit" value={formatIDR(m.hppPerUnit)} icon={Calculator} clr="emerald" subtext="Beban Pokok Produksi" />
+                      <Card title="Harga Rekomendasi" value={formatIDR(m.recommendedPrice)} icon={TrendingUp} clr="indigo" subtext="Posisi Strategis Pasar" />
                    </div>
                    <div className="glass-card rounded-[32px] md:rounded-[48px] p-6 md:p-12 bg-white/[0.02] border border-white/10 h-[300px] md:h-[450px]">
                       <ResponsiveContainer width="100%" height="100%">
@@ -187,12 +192,12 @@ const App = () => {
                         <div key={item.id} className="bg-white/5 border border-white/10 rounded-[32px] p-8 space-y-6">
                            <input value={item.name} className="bg-transparent border-none p-0 text-xl font-black italic uppercase text-indigo-400 focus:ring-0" />
                            <div className="grid grid-cols-2 gap-4">
-                              <div className="bg-white/5 p-4 rounded-2xl space-y-1"><p className="text-[8px] font-black uppercase text-slate-500 italic">Price</p><p className="text-lg font-black italic">{formatIDR(item.packPrice)}</p></div>
-                              <div className="bg-rose-500/5 p-4 rounded-2xl space-y-1"><p className="text-[8px] font-black uppercase text-rose-400 italic">Waste %</p><p className="text-lg font-black italic">{item.waste}%</p></div>
+                              <div className="bg-white/5 p-4 rounded-2xl space-y-1"><p className="text-[8px] font-black uppercase text-slate-500 italic">Harga Beli</p><p className="text-lg font-black italic">{formatIDR(item.packPrice)}</p></div>
+                              <div className="bg-rose-500/5 p-4 rounded-2xl space-y-1"><p className="text-[8px] font-black uppercase text-rose-400 italic">Susut %</p><p className="text-lg font-black italic">{item.waste}%</p></div>
                            </div>
                         </div>
                       ))}
-                      <button onClick={()=>{}} className="bg-white/3 border-2 border-dashed border-white/10 rounded-[32px] p-10 flex flex-col items-center justify-center gap-4 text-slate-500 hover:text-indigo-400 hover:bg-white/5 transition-all"><Plus className="w-10 h-10"/> <span className="font-black text-[10px] uppercase italic tracking-[0.3em]">Add Inventory Item</span></button>
+                      <button onClick={()=>{}} className="bg-white/3 border-2 border-dashed border-white/10 rounded-[32px] p-10 flex flex-col items-center justify-center gap-4 text-slate-500 hover:text-indigo-400 hover:bg-white/5 transition-all"><Plus className="w-10 h-10"/> <span className="font-black text-[10px] uppercase italic tracking-[0.3em]">Tambah Bahan Baru</span></button>
                    </div>
                 </motion.div>
               )}
@@ -202,60 +207,50 @@ const App = () => {
                    {/* 📊 STRATEGY CARD (MOBILE STACK) */}
                    <div className="flex flex-col md:flex-row gap-6 md:gap-10">
                     {[
-                      { l: 'Tier Competitive', m: 25, ic: Sparkles, clr: 'amber' },
-                      { l: 'Tier Standard Pro', m: 45, ic: Trophy, clr: 'indigo', active: true },
-                      { l: 'Tier Enterprise', m: 70, ic: Gem, clr: 'rose' }
+                      { l: 'Tingkat Kompetitif', m: 25, ic: Sparkles, clr: 'amber', hint: 'Pasar Massal' },
+                      { l: 'Tingkat Standar Pro', m: 45, ic: Trophy, clr: 'indigo', hint: 'Sangat Disarankan' },
+                      { l: 'Tingkat Premium', m: 70, ic: Gem, clr: 'rose', hint: 'High-Value Brand' }
                     ].map(t => (
                       <div key={t.l} onClick={() => setProduct({ ...product, targetMargin: t.m })} className={cn(
                         "flex-1 bg-white/5 border-2 rounded-[32px] md:rounded-[48px] p-8 md:p-12 transition-all cursor-pointer relative overflow-hidden group",
                         product.targetMargin===t.m ? `border-${t.clr}-500 bg-${t.clr}-500/[0.05] scale-[1.03] shadow-2xl` : "border-white/10 opacity-50"
                       )}>
+                        {t.m === 45 && <div className="absolute top-6 right-6 px-4 py-1.5 bg-indigo-600 text-white text-[9px] font-black uppercase rounded-full shadow-lg italic tracking-widest">Pilihan Utama</div>}
                         <div className="flex justify-between items-start mb-10"><div className={cn("w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center", `bg-${t.clr}-500/20 text-${t.clr}-400`)}><t.ic className="w-7 h-7" /></div><p className="text-3xl md:text-5xl font-black italic tracking-tighter leading-none">{t.m}%</p></div>
                         <h4 className={cn("text-xl md:text-2xl font-black uppercase italic tracking-tighter leading-none mb-1", `text-${t.clr}-400`)}>{t.l}</h4>
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-600 italic leading-none">Market Segment Ratio</p>
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-600 italic leading-none">{t.hint}</p>
                       </div>
                     ))}
                    </div>
                    <div className="bg-[#0B0F1A] border-2 border-indigo-500/20 rounded-[40px] md:rounded-[64px] p-10 md:p-20 shadow-2xl relative overflow-hidden">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                         <div className="space-y-4"><p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em] italic">Retail Output</p><p className="text-4xl md:text-7xl font-black italic tracking-tighter">{formatIDR(m.recommendedPrice)}</p></div>
-                         <div className="space-y-4"><p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em] italic text-right">Daily Target</p><p className="text-4xl md:text-7xl font-black italic tracking-tighter text-emerald-400 text-right">{m.bepDaily} Unit</p></div>
+                         <div className="space-y-4"><p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em] italic">Hasil Harga Jual</p><p className="text-4xl md:text-7xl font-black italic tracking-tighter">{formatIDR(m.recommendedPrice)}</p></div>
+                         <div className="space-y-4"><p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em] italic text-right">Target Unit Harian</p><p className="text-4xl md:text-7xl font-black italic tracking-tighter text-emerald-400 text-right">{m.bepDaily} Unit</p></div>
                       </div>
+                      <div className="pt-10 mt-10 border-t border-white/5"><p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.5em] italic mb-6">Atur Margin Manual: {product.targetMargin}%</p><input type="range" min="5" max="95" value={product.targetMargin} onChange={e=>setProduct({...product, targetMargin: Number(e.target.value)})} className="w-full h-1.5 bg-white/5 rounded-full appearance-none accent-indigo-500" /></div>
                    </div>
                 </motion.div>
               )}
 
               {activeTab === 'report' && (
-                <motion.div key="rep" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="max-w-4xl mx-auto space-y-6 md:space-y-10">
-                   <div className="bg-white text-slate-900 rounded-[32px] md:rounded-[64px] p-6 sm:p-12 md:p-20 shadow-[0_40px_80px_rgba(0,0,0,0.5)] min-h-[700px] md:min-h-[900px] border border-slate-100 font-bold relative overflow-hidden">
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.03] rotate-[20deg] text-[100px] md:text-[180px] font-black pointer-events-none select-none tracking-widest italic leading-none whitespace-nowrap">AUDIT REPORT</div>
-                      
-                      <div className="flex justify-between items-start border-b-[4px] md:border-b-[6px] border-slate-900 pb-8 md:pb-12 mb-10 md:mb-16 relative z-10">
-                         <div className="space-y-2 md:space-y-4">
-                            <h1 className="text-2xl sm:text-4xl md:text-6xl font-black uppercase italic tracking-tighter leading-none border-l-[12px] md:border-l-[18px] border-indigo-600 pl-4 md:pl-8">BUSINESS <span className="text-indigo-600">AUDIT</span></h1>
-                            <p className="text-[10px] md:text-[12px] font-black uppercase tracking-[0.3em] md:tracking-[0.4em] italic mt-2 text-slate-400">Master Strategy Suite v3.2</p>
-                         </div>
-                         <div className="hidden sm:flex w-16 h-16 md:w-20 md:h-20 bg-slate-900 rounded-[22px] md:rounded-[28px] items-center justify-center text-white"><LucidePieChart className="w-8 h-8 md:w-10 md:h-10"/></div>
+                <motion.div key="rep" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-4xl mx-auto space-y-10">
+                   <div className="bg-white text-slate-900 rounded-[32px] md:rounded-[64px] p-8 sm:p-14 md:p-20 shadow-[0_50px_100px_rgba(0,0,0,0.5)] min-h-[800px] border border-slate-100 font-bold relative overflow-hidden">
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.04] rotate-[20deg] text-[100px] md:text-[220px] font-black pointer-events-none select-none tracking-widest italic whitespace-nowrap">LAPORAN AUDIT</div>
+                      <div className="flex justify-between items-start border-b-[6px] border-slate-900 pb-12 mb-16 relative z-10">
+                         <div><h1 className="text-3xl md:text-6xl font-black uppercase italic tracking-tighter leading-none border-l-[18px] border-indigo-600 pl-8">AUDIT <span className="text-indigo-600">BISNIS</span></h1><p className="text-[12px] font-black uppercase tracking-[0.4em] italic mt-3 text-slate-400">Sistem Strategi Usaha UMKM</p></div>
+                         <div className="w-16 h-16 md:w-20 bg-slate-900 rounded-[28px] flex items-center justify-center text-white"><LucidePieChart className="w-10 h-10"/></div>
                       </div>
 
-                      {/* 🎯 KPI SECTION (Calibrated for Mobile 2x2) */}
-                      <div className="grid grid-cols-2 gap-2 sm:gap-4 md:grid-cols-4 mb-10 md:mb-16 relative z-10 font-black italic">
-                        <div className="bg-slate-100 rounded-2xl md:rounded-[32px] p-5 md:p-8 text-center border border-slate-200"><p className="text-[9px] md:text-[10px] text-slate-400 uppercase leading-none mb-2 tracking-widest italic leading-none">Retail</p><p className="text-lg md:text-2xl">{formatCompactIDR(m.recommendedPrice).replace('Rp','').trim()}</p></div>
-                        <div className="bg-indigo-50 rounded-2xl md:rounded-[32px] p-5 md:p-8 text-center text-indigo-700 border border-indigo-100"><p className="text-[9px] md:text-[10px] text-indigo-400 uppercase leading-none mb-2 tracking-widest italic leading-none">HPP</p><p className="text-lg md:text-2xl">{formatCompactIDR(m.hppPerUnit).replace('Rp','').trim()}</p></div>
-                        <div className="bg-rose-50 rounded-2xl md:rounded-[32px] p-5 md:p-8 text-center text-rose-700 border border-rose-100"><p className="text-[9px] md:text-[10px] text-rose-500 uppercase leading-none mb-2 tracking-widest italic leading-none">Goal</p><p className="text-3xl md:text-5xl leading-none">{m.bepDaily}</p></div>
-                        <div className="bg-slate-900 rounded-2xl md:rounded-[32px] p-5 md:p-8 text-center text-white shadow-xl"><p className="text-[9px] md:text-[10px] text-slate-500 uppercase leading-none mb-2 tracking-widest italic leading-none">Net Est</p><p className="text-lg md:text-2xl text-indigo-400">{formatCompactIDR(m.totalProfit).replace('Rp','').trim()}</p></div>
+                      {/* 🎯 KPI SECTION (Mobile Friendly 2x2) */}
+                      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 mb-16 relative z-10 font-black italic">
+                        <div className="bg-slate-100 rounded-[24px] md:rounded-[32px] p-6 md:p-8 text-center"><p className="text-[10px] text-slate-400 uppercase leading-none mb-2 tracking-widest italic leading-none">Harga Jual</p><p className="text-xl md:text-2xl">{formatCompactIDR(m.recommendedPrice).replace('Rp','').trim()}</p></div>
+                        <div className="bg-indigo-50 rounded-[24px] md:rounded-[32px] p-6 md:p-8 text-center text-indigo-700"><p className="text-[10px] text-indigo-400 uppercase leading-none mb-2 tracking-widest italic leading-none">HPP Produk</p><p className="text-xl md:text-2xl">{formatCompactIDR(m.hppPerUnit).replace('Rp','').trim()}</p></div>
+                        <div className="bg-rose-50 rounded-[24px] md:rounded-[32px] p-6 md:p-8 text-center text-rose-700"><p className="text-[10px] text-rose-500 uppercase leading-none mb-2 tracking-widest italic leading-none">Target Unit</p><p className="text-4xl leading-none">{m.bepDaily}</p></div>
+                        <div className="bg-slate-900 rounded-[24px] md:rounded-[32px] p-6 md:p-8 text-center text-white shadow-xl"><p className="text-[10px] text-slate-500 uppercase leading-none mb-2 tracking-widest italic leading-none">Laba Bersih</p><p className="text-xl md:text-2xl text-indigo-400">{formatCompactIDR(m.totalProfit).replace('Rp','').trim()}</p></div>
                       </div>
 
-                      <div className="p-8 md:p-16 bg-slate-50 border-l-[8px] md:border-l-[12px] border-indigo-600 rounded-r-[32px] md:rounded-r-[56px] italic leading-[2.0] md:leading-[2.2] text-slate-600 text-[14px] sm:text-[16px] md:text-[18px] text-justify relative z-10 font-bold shadow-inner">
-                         Audit Intelligence mendeteksi efisiensi operasional sistem tetap stabil. Target minimal harian <span className="text-indigo-900 font-black underline mx-1">{m.bepDaily} UNIT</span> wajib dipertahankan untuk mengimbangi beban organisasi sebesar <span className="text-rose-800 font-black mx-1">{formatIDR(m.totalFixedMonthly)}</span> per bulan.
-                      </div>
-                      
-                      <div className="mt-10 md:mt-12 flex justify-center"><button onClick={()=>window.print()} className="w-full h-16 md:h-24 bg-slate-900 text-white rounded-[24px] md:rounded-[40px] text-xs md:text-lg font-black uppercase shadow-2xl flex items-center justify-center gap-3 md:gap-4 italic tracking-widest print:hidden active:scale-95 transition-all outline-none"><Printer className="w-4 h-4 md:w-7 md:h-7"/> DOWNLOAD PDF AUDIT</button></div>
-                      
-                      <div className="absolute bottom-8 left-8 right-8 hidden sm:flex justify-between items-center opacity-20 text-[9px] font-black uppercase tracking-[0.4em] italic leading-none pt-8 border-t border-slate-100">
-                         <span>Enterprise v3.2</span>
-                         <span>ID-GEN: {Math.random().toString(36).substr(2, 12).toUpperCase()}</span>
-                      </div>
+                      <div className="p-8 md:p-16 bg-slate-50 border-l-[12px] border-indigo-600 rounded-r-[56px] italic leading-[2.2] text-slate-600 text-[14px] sm:text-[18px] md:text-[20px] text-justify relative z-10 font-bold">Laporan Audit mendeteksi efisiensi operasional sistem tetap stabil. Target minimal harian sebesar <span className="text-indigo-900 font-black underline mx-2">{m.bepDaily} UNIT</span> wajib dipertahankan untuk mengimbangi beban organisasi sebesar <span className="text-rose-800 font-black mx-2">{formatIDR(m.totalFixedMonthly)}</span> per bulan.</div>
+                      <button onClick={()=>window.print()} className="w-full h-24 bg-slate-900 text-white rounded-[40px] text-lg font-black uppercase mt-12 shadow-2xl flex items-center justify-center gap-4 italic tracking-widest print:hidden active:scale-95 transition-all"><Printer className="w-7 h-7"/> UNDUH LAPORAN AUDIT PDF</button>
                    </div>
                 </motion.div>
               )}
@@ -269,10 +264,10 @@ const App = () => {
 
         {/* 🧭 BOTTOM NAV MOBILE */}
         <nav className="fixed bottom-0 left-0 right-0 md:hidden bg-[#0a0b1e]/95 backdrop-blur-2xl border-t border-white/10 flex justify-around px-2 pb-8 pt-4 z-[110] shadow-[0_-15px_40px_rgba(0,0,0,0.8)]">
-           <MobileNavItem icon={LayoutDashboard} label="Summary" active={activeTab==='dashboard'} onClick={()=>setActiveTab('dashboard')}/>
-           <MobileNavItem icon={Database} label="Inventory" active={activeTab==='materials'} onClick={()=>setActiveTab('materials')}/>
-           <MobileNavItem icon={TrendingUp} label="Pricing" active={activeTab==='strategy'} onClick={()=>setActiveTab('strategy')}/>
-           <MobileNavItem icon={FileText} label="Audit" active={activeTab==='report'} onClick={()=>setActiveTab('report')}/>
+           <MobileNavItem icon={LayoutDashboard} label="Ringkasan" active={activeTab==='dashboard'} onClick={()=>setActiveTab('dashboard')}/>
+           <MobileNavItem icon={Database} label="Gudang" active={activeTab==='materials'} onClick={()=>setActiveTab('materials')}/>
+           <MobileNavItem icon={TrendingUp} label="Harga" active={activeTab==='strategy'} onClick={()=>setActiveTab('strategy')}/>
+           <MobileNavItem icon={FileText} label="Laporan" active={activeTab==='report'} onClick={()=>setActiveTab('report')}/>
         </nav>
       </main>
     </div>
