@@ -1,438 +1,681 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { 
-  Plus, Trash2, Calculator, TrendingUp, Target, 
-  Zap, Printer, Home, Layers, Save, 
-  FileText, LayoutDashboard, Database, X, ArrowUpRight, ArrowDownRight,
-  Loader2, LogOut, Trophy, Gem, Sparkles, PieChart as LucidePieChart, CheckCircle2, ChevronDown
+import {
+  Plus, Trash2, Calculator, TrendingUp, Target,
+  Save, FileText, LayoutDashboard, Database, X,
+  Loader2, LogOut, Sun, Moon, ChevronDown, Package,
+  DollarSign, Percent, ShoppingCart, AlertCircle, CheckCircle,
+  Printer, ToggleLeft, ToggleRight, Edit2, BarChart2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
-  ResponsiveContainer, AreaChart, Area
-} from 'recharts';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
-// --- UTILS ---
-const cn = (...inputs) => twMerge(clsx(inputs));
-
-const formatIDR = (val) => new Intl.NumberFormat('id-ID', { 
-  style: 'currency', currency: 'IDR', minimumFractionDigits: 0 
-}).format(val || 0);
-
-const formatCompactIDR = (val) => {
-  if (val >= 1000000) return `Rp ${(val / 1000000).toFixed(1)} Jt`;
-  if (val >= 1000) return `Rp ${(val / 1000).toFixed(1)} Rb`;
-  return formatIDR(val);
+// ─── UTILS ───────────────────────────────────────────────
+const fmt = (v) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(v || 0);
+const fmtShort = (v) => {
+  if (v >= 1000000) return `Rp ${(v / 1000000).toFixed(1)}Jt`;
+  if (v >= 1000) return `Rp ${(v / 1000).toFixed(0)}Rb`;
+  return `Rp ${Math.round(v || 0)}`;
 };
 
-// --- LOGIC ENGINE ---
-const calculateMetrics = (product) => {
-  if (!product) return { hppPerUnit: 0, recommendedPrice: 0, totalProfit: 0, bepDaily: 0, totalFixedMonthly: 0 };
-  const targetMargin = Number(product.targetMargin) || 0;
-  const materials = (product.materials || []).map(m => {
-    const pPrice = Number(m.packPrice) || 0;
-    const pSize = Math.max(0.001, Number(m.packSize) || 1);
-    const pQty = Number(m.qty) || 0;
-    const pWaste = Number(m.waste) || 0;
-    const cost = (pPrice / pSize) * pQty;
-    return { ...m, unitPrice: cost + (cost * (pWaste / 100)) };
-  });
-  const totalMaterialCost = materials.reduce((sum, m) => sum + m.unitPrice, 0);
-  const totalFixedMonthly = (product.fixedCosts || []).filter(f => f.isActive !== false).reduce((sum, f) => sum + (Number(f.amount) || 0), 0);
-  const vol = Math.max(1, Number(product.expectedSalesVolume) || 1);
-  const hppPerUnit = totalMaterialCost + (totalFixedMonthly / vol);
-  const marketplaceFee = Number(product.marketplaceFee) || 0;
-  const multiplier = 1 - (targetMargin / 100) - (marketplaceFee / 100);
-  const recommendedPrice = multiplier > 0 ? hppPerUnit / multiplier : hppPerUnit * 2;
-  const profitPerUnit = recommendedPrice * (targetMargin / 100);
+const calcMetrics = (p) => {
+  if (!p) return {};
+  const margin = Number(p.targetMargin) || 0;
+  const fee = Number(p.marketplaceFee) || 0;
+  const vol = Math.max(1, Number(p.expectedSalesVolume) || 1);
+
+  const matTotal = (p.materials || []).reduce((s, m) => {
+    const price = Number(m.packPrice) || 0;
+    const size = Math.max(0.001, Number(m.packSize) || 1);
+    const qty = Number(m.qty) || 0;
+    const waste = Number(m.waste) || 0;
+    const cost = (price / size) * qty;
+    return s + cost * (1 + waste / 100);
+  }, 0);
+
+  const fixedTotal = (p.fixedCosts || [])
+    .filter(f => f.isActive !== false)
+    .reduce((s, f) => s + (Number(f.amount) || 0), 0);
+
+  const hppUnit = matTotal + fixedTotal / vol;
+  const multiplier = 1 - margin / 100 - fee / 100;
+  const sellPrice = multiplier > 0 ? hppUnit / multiplier : hppUnit * 2;
+  const profitUnit = sellPrice - hppUnit - sellPrice * (fee / 100);
+  const bep = profitUnit > 0 ? Math.ceil((fixedTotal / profitUnit) / 30) : 0;
+
   return {
-    hppPerUnit: Math.round(hppPerUnit),
-    recommendedPrice: Math.round(recommendedPrice),
-    totalProfit: Math.round(profitPerUnit * vol),
-    bepDaily: Math.ceil((totalFixedMonthly / (recommendedPrice - totalMaterialCost - (recommendedPrice * (marketplaceFee / 100)))) / 30),
-    totalFixedMonthly
+    matTotal: Math.round(matTotal),
+    fixedTotal: Math.round(fixedTotal),
+    hppUnit: Math.round(hppUnit),
+    sellPrice: Math.round(sellPrice),
+    profitUnit: Math.round(profitUnit),
+    profitMonthly: Math.round(profitUnit * vol),
+    margin: Math.round((profitUnit / sellPrice) * 100),
+    bepDaily: bep,
+    roi: hppUnit > 0 ? Math.round((profitUnit / hppUnit) * 100) : 0,
   };
 };
 
-// --- KOMPONEN REUSABLE ---
+// ─── SUB-COMPONENTS ──────────────────────────────────────
+const Label = ({ children }) => (
+  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{children}</p>
+);
 
-function Card({ title, value, subtext, icon: Icon, clr = "indigo", trend = null, isHero = false }) {
-  return (
-    <div className={cn(
-      "bg-white/5 border border-white/10 rounded-2xl md:rounded-[32px] p-5 md:p-8 backdrop-blur transition-all duration-300 hover:scale-[1.02] hover:bg-white/[0.08] relative overflow-hidden group",
-      isHero && "bg-gradient-to-br from-indigo-600/5 to-transparent border-indigo-500/20 shadow-2xl"
-    )}>
-      <div className="flex justify-between items-start mb-4 md:mb-6">
-        <div className={cn("w-10 h-10 md:w-12 md:h-12 rounded-xl flex items-center justify-center", `bg-${clr}-500/20 text-${clr}-400`)}>
-          {Icon && <Icon className="w-5 h-5 md:w-6 md:h-6" />}
+const Input = ({ label, type = 'text', prefix, suffix, ...props }) => (
+  <div>
+    {label && <Label>{label}</Label>}
+    <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5 focus-within:ring-2 focus-within:ring-emerald-500/30 focus-within:border-emerald-400 transition-all">
+      {prefix && <span className="text-slate-400 text-xs shrink-0">{prefix}</span>}
+      <input
+        type={type}
+        inputMode={type === 'number' ? 'decimal' : undefined}
+        className="flex-1 bg-transparent text-sm font-medium text-slate-800 dark:text-slate-100 outline-none min-w-0 placeholder:text-slate-300"
+        {...props}
+      />
+      {suffix && <span className="text-slate-400 text-xs shrink-0">{suffix}</span>}
+    </div>
+  </div>
+);
+
+const Stat = ({ label, value, sub, accent = false, small = false }) => (
+  <div className={`rounded-xl p-4 border ${accent ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800' : 'bg-white dark:bg-slate-800/60 border-slate-100 dark:border-slate-700/60'}`}>
+    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">{label}</p>
+    <p className={`font-bold leading-tight ${accent ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-100'} ${small ? 'text-base' : 'text-xl'}`}>{value}</p>
+    {sub && <p className="text-xs text-slate-400 mt-0.5">{sub}</p>}
+  </div>
+);
+
+const Badge = ({ children, color = 'slate' }) => {
+  const colors = {
+    slate: 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300',
+    green: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400',
+    red: 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400',
+    blue: 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-400',
+  };
+  return <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${colors[color]}`}>{children}</span>;
+};
+
+// ─── LOGIN PAGE ───────────────────────────────────────────
+const LoginPage = ({ onLogin, isDark, toggleDark }) => (
+  <div className={`min-h-screen flex items-center justify-center p-6 ${isDark ? 'dark bg-slate-950' : 'bg-slate-50'}`}>
+    <div className="w-full max-w-sm">
+      <button onClick={toggleDark} className="absolute top-6 right-6 p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors">
+        {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+      </button>
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-8 shadow-sm">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
+            <Calculator className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-base font-bold text-slate-800 dark:text-slate-100">HPP Master</h1>
+            <p className="text-xs text-slate-400">Kalkulator Usaha UMKM</p>
+          </div>
         </div>
-        <div className="text-right">
-          <p className="text-[9px] md:text-[11px] font-black text-slate-500 uppercase tracking-widest italic">{title}</p>
-          {trend && (
-             <span className={cn("text-[9px] font-black italic", trend > 0 ? "text-emerald-500" : "text-rose-500")}>
-               {trend > 0 ? "+" : ""}{trend}%
-             </span>
-          )}
+        <div className="space-y-3 mb-6">
+          <div>
+            <Label>Username</Label>
+            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200">admin</div>
+          </div>
+          <div>
+            <Label>Password</Label>
+            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-400">••••••••</div>
+          </div>
+        </div>
+        <button onClick={onLogin} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors active:scale-[0.98]">
+          Masuk
+        </button>
+        <p className="text-xs text-slate-400 text-center mt-4">Demo mode — klik masuk untuk lanjut</p>
+      </div>
+    </div>
+  </div>
+);
+
+// ─── TABS ─────────────────────────────────────────────────
+const NAV = [
+  { id: 'dashboard', label: 'Ringkasan', icon: LayoutDashboard },
+  { id: 'materials', label: 'Bahan Baku', icon: Database },
+  { id: 'costs', label: 'Biaya Tetap', icon: DollarSign },
+  { id: 'strategy', label: 'Harga Jual', icon: TrendingUp },
+  { id: 'report', label: 'Laporan', icon: FileText },
+];
+
+// ─── MAIN APP ─────────────────────────────────────────────
+export default function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isDark, setIsDark] = useState(false);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [isSaving, setIsSaving] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [activeId, setActiveId] = useState(null);
+
+  const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+  const defaultProduct = (n = 1) => ({
+    id: 'p-' + Date.now(),
+    name: `Produk ${n}`,
+    targetMargin: 40,
+    expectedSalesVolume: 100,
+    marketplaceFee: 0,
+    materials: [],
+    fixedCosts: [],
+  });
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', isDark);
+  }, [isDark]);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await axios.get(`${API}/products`);
+        if (res.data?.length) { setProducts(res.data); setActiveId(res.data[0].id); return; }
+      } catch {}
+      const stored = localStorage.getItem('hpp_v2');
+      if (stored) { const p = JSON.parse(stored); setProducts(p); setActiveId(p[0].id); return; }
+      const init = defaultProduct(1);
+      setProducts([init]);
+      setActiveId(init.id);
+    };
+    load();
+  }, []);
+
+  const active = useMemo(() => products.find(p => p.id === activeId) || products[0], [products, activeId]);
+  const m = useMemo(() => calcMetrics(active), [active]);
+
+  const update = (field, val) => setProducts(prev => prev.map(p => p.id === activeId ? { ...p, [field]: val } : p));
+  const updateMat = (mid, field, val) => update('materials', active.materials.map(m => m.id === mid ? { ...m, [field]: val } : m));
+  const updateCost = (fid, field, val) => update('fixedCosts', active.fixedCosts.map(f => f.id === fid ? { ...f, [field]: val } : f));
+
+  const addMaterial = () => update('materials', [...(active.materials || []), { id: 'm-' + Date.now(), name: 'Bahan Baru', packPrice: 0, packSize: 1, qty: 1, waste: 0 }]);
+  const delMaterial = (mid) => update('materials', active.materials.filter(m => m.id !== mid));
+  const addCost = () => update('fixedCosts', [...(active.fixedCosts || []), { id: 'f-' + Date.now(), name: 'Biaya Baru', amount: 0, isActive: true }]);
+  const delCost = (fid) => update('fixedCosts', active.fixedCosts.filter(f => f.id !== fid));
+
+  const addProduct = () => {
+    const p = defaultProduct(products.length + 1);
+    setProducts(prev => [...prev, p]);
+    setActiveId(p.id);
+  };
+  const delProduct = (id, e) => {
+    e.stopPropagation();
+    if (products.length <= 1) return;
+    const next = products.filter(p => p.id !== id);
+    setProducts(next);
+    if (activeId === id) setActiveId(next[0].id);
+  };
+
+  const save = async () => {
+    setIsSaving(true);
+    try { await axios.post(`${API}/products/${active.id}`, active); } catch {}
+    localStorage.setItem('hpp_v2', JSON.stringify(products));
+    setTimeout(() => setIsSaving(false), 700);
+  };
+
+  if (!isLoggedIn) return <LoginPage onLogin={() => setIsLoggedIn(true)} isDark={isDark} toggleDark={() => setIsDark(d => !d)} />;
+
+  // Chart data
+  const chartData = [50, 100, 150, 200, 250, 300].map(u => ({
+    unit: `${u}`,
+    laba: Math.max(0, Math.round(m.profitUnit * u - (u < 100 ? m.fixedTotal * (1 - u / 100) : 0))),
+  }));
+
+  return (
+    <div className={isDark ? 'dark' : ''}>
+      <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-inter">
+
+        {/* ── SIDEBAR ── */}
+        <aside className="hidden md:flex w-56 flex-col bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 shrink-0 sticky top-0 h-screen">
+          {/* Logo */}
+          <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2.5">
+            <div className="w-7 h-7 bg-emerald-500 rounded-lg flex items-center justify-center">
+              <Calculator className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-bold text-sm text-slate-800 dark:text-slate-100">HPP Master</span>
+          </div>
+
+          {/* Product List */}
+          <div className="p-3 border-b border-slate-100 dark:border-slate-800">
+            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-2 mb-2">Produk</p>
+            <div className="space-y-0.5 max-h-44 overflow-y-auto no-scrollbar">
+              {products.map(p => (
+                <button key={p.id} onClick={() => setActiveId(p.id)}
+                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors group ${p.id === activeId ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+                  <span className="truncate">{p.name}</span>
+                  {products.length > 1 && (
+                    <X onClick={e => delProduct(p.id, e)} className="w-3 h-3 opacity-0 group-hover:opacity-60 hover:opacity-100 shrink-0 ml-1" />
+                  )}
+                </button>
+              ))}
+            </div>
+            <button onClick={addProduct} className="w-full flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors mt-1">
+              <Plus className="w-3 h-3" /> Tambah produk
+            </button>
+          </div>
+
+          {/* Nav */}
+          <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto no-scrollbar">
+            {NAV.map(({ id, label, icon: Icon }) => (
+              <button key={id} onClick={() => setActiveTab(id)}
+                className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-xs font-medium transition-colors ${activeTab === id ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                {label}
+              </button>
+            ))}
+          </nav>
+
+          {/* Footer */}
+          <div className="p-3 border-t border-slate-100 dark:border-slate-800 space-y-0.5">
+            <button onClick={() => setIsDark(d => !d)} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+              {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+              {isDark ? 'Mode Terang' : 'Mode Gelap'}
+            </button>
+            <button onClick={() => setIsLoggedIn(false)} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
+              <LogOut className="w-3.5 h-3.5" /> Keluar
+            </button>
+          </div>
+        </aside>
+
+        {/* ── CONTENT ── */}
+        <div className="flex-1 flex flex-col min-w-0">
+
+          {/* Mobile Header */}
+          <header className="md:hidden bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-4 py-3 flex items-center justify-between sticky top-0 z-50">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 bg-emerald-500 rounded-md flex items-center justify-center">
+                <Calculator className="w-3.5 h-3.5 text-white" />
+              </div>
+              <select value={activeId} onChange={e => setActiveId(e.target.value)}
+                className="bg-transparent text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none max-w-[140px]">
+                {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setIsDark(d => !d)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+                {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </button>
+              <button onClick={save} className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
+                {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                Simpan
+              </button>
+            </div>
+          </header>
+
+          {/* Desktop Header */}
+          <header className="hidden md:flex bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-8 py-4 items-center justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                {NAV.find(n => n.id === activeTab)?.label}
+              </h2>
+              <p className="text-xs text-slate-400">
+                {active?.name} · {products.length} produk
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                <span className={`w-1.5 h-1.5 rounded-full ${isSaving ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
+                {isSaving ? 'Menyimpan...' : 'Tersimpan'}
+              </div>
+              <button onClick={save} className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
+                {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                Simpan
+              </button>
+            </div>
+          </header>
+
+          {/* PAGE CONTENT */}
+          <main className="flex-1 overflow-y-auto scrollbar-thin pb-28 md:pb-8">
+            <div className="max-w-3xl mx-auto p-4 md:p-8">
+
+              {/* Product Name Edit */}
+              <div className="mb-5">
+                <input value={active?.name || ''} onChange={e => update('name', e.target.value)}
+                  className="text-lg font-bold bg-transparent outline-none text-slate-800 dark:text-slate-100 border-b-2 border-transparent focus:border-emerald-400 transition-colors w-full"
+                  placeholder="Nama Produk"
+                />
+              </div>
+
+              <AnimatePresence mode="wait">
+
+                {/* ── DASHBOARD ── */}
+                {activeTab === 'dashboard' && (
+                  <motion.div key="dash" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <Stat label="HPP per Unit" value={fmtShort(m.hppUnit)} sub="Biaya pokok" accent />
+                      <Stat label="Harga Jual" value={fmtShort(m.sellPrice)} sub="Rekomendasi" />
+                      <Stat label="Laba per Unit" value={fmtShort(m.profitUnit)} sub={`Margin ${m.margin}%`} />
+                      <Stat label="Laba Bulanan" value={fmtShort(m.profitMonthly)} sub={`${active?.expectedSalesVolume} unit/bln`} />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <Stat label="BEP Harian" value={`${m.bepDaily} unit/hari`} sub="Titik balik modal" small />
+                      <Stat label="ROI" value={`${m.roi}%`} sub="Return on investment" small />
+                    </div>
+
+                    {/* Health check */}
+                    <div className="bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 rounded-xl p-4">
+                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3 flex items-center gap-1.5">
+                        <BarChart2 className="w-3.5 h-3.5" /> Kesehatan Bisnis
+                      </p>
+                      <div className="space-y-2.5">
+                        {[
+                          { label: 'Margin keuntungan', val: m.margin, unit: '%', good: m.margin >= 30, tip: m.margin >= 30 ? 'Sehat' : 'Terlalu rendah' },
+                          { label: 'Biaya bahan baku', val: m.hppUnit > 0 ? Math.round((m.matTotal / m.hppUnit) * 100) : 0, unit: '% dari HPP', good: true, tip: 'Komponen utama' },
+                        ].map(item => (
+                          <div key={item.label} className="flex items-center justify-between">
+                            <span className="text-xs text-slate-500 dark:text-slate-400">{item.label}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{item.val}{item.unit}</span>
+                              <Badge color={item.good ? 'green' : 'red'}>{item.tip}</Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Chart */}
+                    <div className="bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 rounded-xl p-4">
+                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-4">Proyeksi Laba vs Volume Penjualan</p>
+                      <ResponsiveContainer width="100%" height={180}>
+                        <AreaChart data={chartData}>
+                          <defs>
+                            <linearGradient id="grd" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                              <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="2 4" stroke={isDark ? '#1e293b' : '#f1f5f9'} />
+                          <XAxis dataKey="unit" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                          <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={v => fmtShort(v)} />
+                          <Tooltip formatter={v => [fmtShort(v), 'Laba']} contentStyle={{ fontSize: 11, borderRadius: 10, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', background: isDark ? '#1e293b' : '#fff' }} />
+                          <Area type="monotone" dataKey="laba" stroke="#10b981" strokeWidth={2} fill="url(#grd)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* ── MATERIALS ── */}
+                {activeTab === 'materials' && (
+                  <motion.div key="mat" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Total biaya bahan: <span className="font-semibold text-slate-700 dark:text-slate-200">{fmt(m.matTotal)}</span></p>
+                      </div>
+                      <button onClick={addMaterial} className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 px-3 py-1.5 rounded-lg transition-colors">
+                        <Plus className="w-3.5 h-3.5" /> Tambah Bahan
+                      </button>
+                    </div>
+
+                    {active?.materials?.length === 0 && (
+                      <div className="text-center py-12 text-slate-400">
+                        <Package className="w-8 h-8 mx-auto mb-3 opacity-40" />
+                        <p className="text-sm">Belum ada bahan baku</p>
+                        <p className="text-xs mt-1">Klik "Tambah Bahan" untuk mulai</p>
+                      </div>
+                    )}
+
+                    {active?.materials?.map(item => {
+                      const unitCost = item.packSize > 0 ? ((item.packPrice / item.packSize) * item.qty) * (1 + item.waste / 100) : 0;
+                      return (
+                        <div key={item.id} className="bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 rounded-xl p-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <input value={item.name} onChange={e => updateMat(item.id, 'name', e.target.value)}
+                              className="font-semibold text-sm bg-transparent outline-none text-slate-800 dark:text-slate-100 border-b border-transparent focus:border-emerald-400 transition-colors" />
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{fmt(unitCost)}</span>
+                              <button onClick={() => delMaterial(item.id)} className="text-slate-300 hover:text-red-400 transition-colors">
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2.5">
+                            <Input label="Harga pack (Rp)" type="number" value={item.packPrice} onChange={e => updateMat(item.id, 'packPrice', Number(e.target.value))} placeholder="0" />
+                            <Input label="Isi pack (gr/ml/pcs)" type="number" value={item.packSize} onChange={e => updateMat(item.id, 'packSize', Number(e.target.value))} placeholder="1" />
+                            <Input label="Pemakaian/produk" type="number" value={item.qty} onChange={e => updateMat(item.id, 'qty', Number(e.target.value))} placeholder="0" />
+                            <Input label="Susut/Waste" type="number" value={item.waste} onChange={e => updateMat(item.id, 'waste', Number(e.target.value))} placeholder="0" suffix="%" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </motion.div>
+                )}
+
+                {/* ── FIXED COSTS ── */}
+                {activeTab === 'costs' && (
+                  <motion.div key="costs" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Total aktif: <span className="font-semibold text-slate-700 dark:text-slate-200">{fmt(m.fixedTotal)}/bln</span></p>
+                      <button onClick={addCost} className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 px-3 py-1.5 rounded-lg transition-colors">
+                        <Plus className="w-3.5 h-3.5" /> Tambah Biaya
+                      </button>
+                    </div>
+
+                    {/* Volume & Fee */}
+                    <div className="bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 rounded-xl p-4 space-y-3">
+                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-300">Pengaturan Produksi</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Input label="Volume Penjualan (unit/bulan)" type="number" value={active?.expectedSalesVolume} onChange={e => update('expectedSalesVolume', Number(e.target.value))} suffix="unit" />
+                        <Input label="Fee Marketplace (%)" type="number" value={active?.marketplaceFee} onChange={e => update('marketplaceFee', Number(e.target.value))} suffix="%" />
+                      </div>
+                    </div>
+
+                    {active?.fixedCosts?.length === 0 && (
+                      <div className="text-center py-12 text-slate-400">
+                        <DollarSign className="w-8 h-8 mx-auto mb-3 opacity-40" />
+                        <p className="text-sm">Belum ada biaya tetap</p>
+                        <p className="text-xs mt-1">Contoh: sewa, listrik, gaji, dll.</p>
+                      </div>
+                    )}
+
+                    {active?.fixedCosts?.map(item => (
+                      <div key={item.id} className={`bg-white dark:bg-slate-800/60 border rounded-xl p-3.5 transition-opacity ${item.isActive === false ? 'opacity-50 border-slate-100 dark:border-slate-700/30' : 'border-slate-100 dark:border-slate-700/60'}`}>
+                        {/* Row 1: toggle + name + delete */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <button onClick={() => updateCost(item.id, 'isActive', item.isActive === false ? true : false)}
+                            className={`shrink-0 transition-colors ${item.isActive === false ? 'text-slate-300' : 'text-emerald-500'}`}>
+                            {item.isActive === false ? <ToggleLeft className="w-5 h-5" /> : <ToggleRight className="w-5 h-5" />}
+                          </button>
+                          <input value={item.name} onChange={e => updateCost(item.id, 'name', e.target.value)}
+                            className="flex-1 font-medium text-sm bg-transparent outline-none text-slate-700 dark:text-slate-200 min-w-0" />
+                          <button onClick={() => delCost(item.id)} className="text-slate-300 hover:text-red-400 transition-colors shrink-0 p-1">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        {/* Row 2: amount input full width */}
+                        <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-700/60 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-emerald-500/30">
+                          <span className="text-xs text-slate-400 shrink-0">Rp</span>
+                          <input type="number" inputMode="decimal" value={item.amount} onChange={e => updateCost(item.id, 'amount', Number(e.target.value))}
+                            className="bg-transparent text-sm font-medium outline-none flex-1 text-right text-slate-700 dark:text-slate-200" />
+                          <span className="text-xs text-slate-400 shrink-0">/bln</span>
+                        </div>
+                      </div>
+                    ))}
+                  </motion.div>
+                )}
+
+                {/* ── STRATEGY ── */}
+                {activeTab === 'strategy' && (
+                  <motion.div key="str" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5">
+                    {/* Presets */}
+                    <div>
+                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-3">Pilih Target Margin</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { label: 'Kompetitif', val: 25, desc: 'Pasar massal' },
+                          { label: 'Standar', val: 40, desc: 'Untuk UMKM' },
+                          { label: 'Premium', val: 65, desc: 'High-value' },
+                        ].map(preset => (
+                          <button key={preset.val} onClick={() => update('targetMargin', preset.val)}
+                            className={`p-3 rounded-xl border text-left transition-all active:scale-[0.97] ${active?.targetMargin === preset.val ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/40' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60'}`}>
+                            <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{preset.val}%</p>
+                            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mt-0.5 leading-tight">{preset.label}</p>
+                            <p className="text-[10px] text-slate-400 mt-0.5 leading-tight hidden sm:block">{preset.desc}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Slider */}
+                    <div className="bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <Label>Margin kustom</Label>
+                        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{active?.targetMargin}%</span>
+                      </div>
+                      <input type="range" min="5" max="90" value={active?.targetMargin}
+                        onChange={e => update('targetMargin', Number(e.target.value))}
+                        className="w-full accent-emerald-500" />
+                      <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+                        <span>5%</span><span>90%</span>
+                      </div>
+                    </div>
+
+                    {/* Result */}
+                    <div className="bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 rounded-xl p-5">
+                      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-4">Hasil Kalkulasi</p>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-slate-400 mb-1">HPP per Unit</p>
+                          <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{fmt(m.hppUnit)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-400 mb-1">Harga Jual</p>
+                          <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{fmt(m.sellPrice)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-400 mb-1">Laba per Unit</p>
+                          <p className="text-lg font-semibold text-slate-700 dark:text-slate-200">{fmt(m.profitUnit)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-400 mb-1">BEP Harian</p>
+                          <p className="text-lg font-semibold text-slate-700 dark:text-slate-200">{m.bepDaily} unit</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Margin vs. Fee warning */}
+                    {(Number(active?.targetMargin) + Number(active?.marketplaceFee)) >= 90 && (
+                      <div className="flex items-start gap-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+                        <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        <p className="text-xs text-amber-700 dark:text-amber-300">Margin + fee marketplace terlalu tinggi ({'>'} 90%). Harga jual bisa tidak kompetitif.</p>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+
+                {/* ── REPORT ── */}
+                {activeTab === 'report' && (
+                  <motion.div key="rep" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5">
+                    <div className="bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 rounded-xl p-6 print:shadow-none print:border-none" id="print-area">
+                      <div className="flex items-start justify-between mb-6 pb-5 border-b border-slate-100 dark:border-slate-700">
+                        <div>
+                          <h1 className="text-lg font-bold text-slate-800 dark:text-slate-100">Laporan HPP</h1>
+                          <p className="text-xs text-slate-400">{active?.name} · {new Date().toLocaleDateString('id-ID', { dateStyle: 'long' })}</p>
+                        </div>
+                        <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
+                          <Calculator className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 mb-6">
+                        {[
+                          { l: 'HPP per Unit', v: fmt(m.hppUnit) },
+                          { l: 'Harga Jual', v: fmt(m.sellPrice) },
+                          { l: 'Laba per Unit', v: fmt(m.profitUnit) },
+                          { l: 'Margin Keuntungan', v: `${m.margin}%` },
+                          { l: 'Volume (unit/bln)', v: active?.expectedSalesVolume },
+                          { l: 'Laba Bulanan', v: fmt(m.profitMonthly) },
+                          { l: 'BEP Harian', v: `${m.bepDaily} unit` },
+                          { l: 'ROI', v: `${m.roi}%` },
+                        ].map(item => (
+                          <div key={item.l} className="bg-slate-50 dark:bg-slate-700/40 rounded-lg p-3">
+                            <p className="text-[10px] text-slate-400 mb-0.5 font-medium">{item.l}</p>
+                            <p className="text-sm font-bold text-slate-800 dark:text-slate-100">{item.v}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Bahan baku breakdown */}
+                      {active?.materials?.length > 0 && (
+                        <div className="mb-5">
+                          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">Rincian Bahan Baku</p>
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="text-slate-400 border-b border-slate-100 dark:border-slate-700">
+                                <th className="text-left py-1.5 font-medium">Bahan</th>
+                                <th className="text-right py-1.5 font-medium">Biaya/Unit</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {active.materials.map(item => {
+                                const cost = item.packSize > 0 ? ((item.packPrice / item.packSize) * item.qty) * (1 + item.waste / 100) : 0;
+                                return (
+                                  <tr key={item.id} className="border-b border-slate-50 dark:border-slate-700/50">
+                                    <td className="py-1.5 text-slate-600 dark:text-slate-300">{item.name}</td>
+                                    <td className="py-1.5 text-right font-semibold text-slate-700 dark:text-slate-200">{fmt(cost)}</td>
+                                  </tr>
+                                );
+                              })}
+                              <tr>
+                                <td className="pt-2 font-semibold text-slate-700 dark:text-slate-200">Total</td>
+                                <td className="pt-2 text-right font-bold text-emerald-600 dark:text-emerald-400">{fmt(m.matTotal)}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                      {/* Biaya tetap breakdown */}
+                      {active?.fixedCosts?.filter(f => f.isActive !== false).length > 0 && (
+                        <div className="mb-5">
+                          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">Biaya Tetap Aktif</p>
+                          <table className="w-full text-xs">
+                            <tbody>
+                              {active.fixedCosts.filter(f => f.isActive !== false).map(item => (
+                                <tr key={item.id} className="border-b border-slate-50 dark:border-slate-700/50">
+                                  <td className="py-1.5 text-slate-600 dark:text-slate-300">{item.name}</td>
+                                  <td className="py-1.5 text-right font-semibold text-slate-700 dark:text-slate-200">{fmt(item.amount)}/bln</td>
+                                </tr>
+                              ))}
+                              <tr>
+                                <td className="pt-2 font-semibold text-slate-700 dark:text-slate-200">Total per unit</td>
+                                <td className="pt-2 text-right font-bold text-slate-800 dark:text-slate-100">{fmt(m.fixedTotal / Math.max(1, active?.expectedSalesVolume))}</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                      <div className="bg-slate-50 dark:bg-slate-700/40 rounded-xl p-4 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Untuk mencapai break even point, usaha ini perlu menjual minimal <strong className="text-slate-800 dark:text-slate-100">{m.bepDaily} unit per hari</strong> dengan harga jual <strong className="text-emerald-600 dark:text-emerald-400">{fmt(m.sellPrice)}</strong>. Dengan target {active?.expectedSalesVolume} unit/bulan, proyeksi laba bersih sebesar <strong className="text-slate-800 dark:text-slate-100">{fmt(m.profitMonthly)}/bulan</strong>.
+                      </div>
+                    </div>
+
+                    <button onClick={() => window.print()} className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors no-print">
+                      <Printer className="w-4 h-4" /> Cetak / Simpan PDF
+                    </button>
+                  </motion.div>
+                )}
+
+              </AnimatePresence>
+            </div>
+          </main>
+
+          {/* Mobile Bottom Nav */}
+          <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+            {NAV.map(({ id, label, icon: Icon }) => (
+              <button key={id} onClick={() => setActiveTab(id)}
+                className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 px-0.5 transition-colors ${activeTab === id ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                <div className={`w-8 h-8 flex items-center justify-center rounded-xl transition-colors ${activeTab === id ? 'bg-emerald-50 dark:bg-emerald-950/50' : ''}`}>
+                  <Icon className="w-4 h-4" />
+                </div>
+                <span className="text-[9px] font-semibold leading-none">{label}</span>
+              </button>
+            ))}
+          </nav>
+
         </div>
       </div>
-      <h2 className={cn("font-black text-white italic tracking-tighter leading-none mb-2", isHero ? "text-3xl md:text-5xl" : "text-xl md:text-3xl")}>{value}</h2>
-      <p className="text-[9px] md:text-[11px] font-bold text-slate-500 uppercase tracking-wider italic leading-none">{subtext}</p>
     </div>
   );
 }
-
-const MobileNavItem = ({ icon: Icon, label, active, onClick }) => (
-  <button onClick={onClick} className="flex flex-col items-center gap-1 flex-1 py-1 transition-all">
-     <div className={cn("p-2.5 rounded-2xl transition-all duration-500", active ? "bg-indigo-600 text-white shadow-xl -translate-y-2 scale-110" : "text-slate-600")}>
-        <Icon className="w-5 h-5" />
-     </div>
-     {!active && <span className="text-[8px] font-black uppercase tracking-widest text-slate-600 italic leading-none">{label}</span>}
-  </button>
-);
-
-// --- MAIN APP ---
-
-const App = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [isSaving, setIsSaving] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(true);
-  
-  // -- PERSISTENCE STATE --
-  const [products, setProducts] = useState([]);
-  const [activeProductId, setActiveProductId] = useState('new');
-  
-  const defaultProduct = {
-    id: 'new', name: 'Produk Baru', targetMargin: 45, expectedSalesVolume: 100, marketplaceFee: 0,
-    materials: [], fixedCosts: []
-  };
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDarkMode);
-  }, [isDarkMode]);
-  // -- LOAD DATA --
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const res = await axios.get(`${API_URL}/products`);
-        if (res.data && res.data.length > 0) {
-          setProducts(res.data);
-          setActiveProductId(res.data[0].id);
-        } else {
-          const init = { ...defaultProduct, id: 'temp-' + Date.now(), name: 'Produk Contoh' };
-          setProducts([init]);
-          setActiveProductId(init.id);
-        }
-      } catch (err) {
-        console.error("API Error, using fallback:", err);
-        const stored = localStorage.getItem('hpp_products');
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          setProducts(parsed);
-          setActiveProductId(parsed[0].id);
-        } else {
-          // ENSURE AT LEAST ONE PRODUCT EXISTS EVEN ON ERROR
-          const init = { ...defaultProduct, id: 'err-' + Date.now(), name: 'Produk Offline' };
-          setProducts([init]);
-          setActiveProductId(init.id);
-        }
-      }
-    };
-    fetchProducts();
-  }, []);
-
-  const activeProduct = useMemo(() => {
-    return products.find(p => p.id === activeProductId) || products[0] || { ...defaultProduct, id: 'fb-' + Date.now() };
-  }, [products, activeProductId]);
-
-  const m = useMemo(() => calculateMetrics(activeProduct), [activeProduct]);
-
-  // -- SAVE LOGIC --
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      await axios.post(`${API_URL}/products/${activeProduct.id}`, activeProduct);
-    } catch (err) {
-      console.warn("API Save failed, syncing to LocalStorage only.");
-    }
-    // Always sync to LocalStorage as a reliable secondary
-    localStorage.setItem('hpp_products', JSON.stringify(products));
-    setTimeout(() => setIsSaving(false), 800);
-  };
-
-  const addProduct = () => {
-    const newId = 'prod-' + Date.now();
-    const newP = { ...defaultProduct, id: newId, name: `Produk #${products.length + 1}` };
-    setProducts([...products, newP]);
-    setActiveProductId(newId);
-  };
-
-  const deleteProduct = (id, e) => {
-    e.stopPropagation();
-    if (products.length <= 1) return;
-    const filtered = products.filter(p => p.id !== id);
-    setProducts(filtered);
-    if (activeProductId === id) setActiveProductId(filtered[0].id);
-  };
-
-  const updateActiveProduct = (field, value) => {
-    setProducts(prev => prev.map(p => p.id === activeProductId ? { ...p, [field]: value } : p));
-  };
-
-  const updateMaterial = (mid, field, value) => {
-    setProducts(prev => prev.map(p => {
-      if (p.id !== activeProductId) return p;
-      return {
-        ...p,
-        materials: p.materials.map(m => m.id === mid ? { ...m, [field]: value } : m)
-      };
-    }));
-  };
-
-  const updateFixedCost = (fid, field, value) => {
-    setProducts(prev => prev.map(p => {
-      if (p.id !== activeProductId) return p;
-      return {
-        ...p,
-        fixedCosts: p.fixedCosts.map(f => f.id === fid ? { ...f, [field]: value } : f)
-      };
-    }));
-  };
-
-  const handleLogin = () => { setIsLoggedIn(true); };
-  const handleLogout = () => { setIsLoggedIn(false); };
-
-  if (!isLoggedIn) return (
-    <div className={`min-h-screen ${isDarkMode ? 'bg-[#0B0F1A]' : 'bg-slate-50'} flex items-center justify-center p-6 text-white font-outfit transition-colors duration-500`}>
-      <div className={`w-full max-w-sm glass-card rounded-[40px] p-10 border ${isDarkMode ? 'border-white/10 bg-[#0B0F1A]/60' : 'border-slate-200 bg-white shadow-2xl'} shadow-2xl space-y-8 text-center`}>
-        <div className="w-16 h-16 bg-indigo-600 rounded-[22px] mx-auto flex items-center justify-center shadow-2xl"><Calculator className="w-8 h-8 text-white"/></div>
-        <h1 className={`text-2xl font-black italic uppercase tracking-tighter leading-none ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>HPP MASTER <span className="text-indigo-500">PRO</span></h1>
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 italic">Sistem Operasional Bisnis Mandiri</p>
-        <button onClick={handleLogin} className="w-full h-14 bg-indigo-600 text-white font-black uppercase tracking-widest rounded-2xl shadow-xl active:scale-95 transition-all">Masuk Kontrol Panel</button>
-      </div>
-    </div>
-  );
-
-  return (
-    <div className={`flex flex-col md:flex-row min-h-screen ${isDarkMode ? 'bg-[#0B0F1A] text-white' : 'bg-white text-slate-950'} font-outfit overflow-hidden transition-colors duration-500`}>
-      
-      {/* MOBILE SUPER-HEADER */}
-      <header className={`lg:hidden h-20 border-b flex items-center justify-between px-6 shrink-0 z-[120] transition-colors duration-500 ${isDarkMode ? 'bg-[#0a0b1e]/90 text-white border-white/5' : 'bg-white/95 text-slate-900 border-slate-200'} backdrop-blur-xl sticky top-0 shadow-lg shadow-black/5`}>
-         <div className="flex items-center gap-4 group">
-            <div className="w-11 h-11 bg-indigo-600 rounded-[18px] flex items-center justify-center shadow-lg shadow-indigo-600/30 font-black rotate-3">
-               <Calculator className="text-white w-5 h-5" />
-            </div>
-            <div className="flex flex-col">
-               <div className={`font-black text-xs italic tracking-tighter uppercase leading-none ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>HPP MASTER <span className="text-indigo-500">PRO</span></div>
-               <div className="mt-1 flex items-center gap-1.5 overflow-hidden">
-                  <select 
-                    value={activeProductId} 
-                    onChange={(e) => setActiveProductId(e.target.value)}
-                    className="bg-transparent border-none p-0 text-[10px] font-black uppercase text-indigo-500 outline-none focus:ring-0 max-w-[120px] truncate"
-                  >
-                     {products.map(p => <option key={p.id} value={p.id} className="bg-slate-900 text-white">{p.name}</option>)}
-                  </select>
-                  <ChevronDown className="w-2.5 h-2.5 text-slate-500" />
-               </div>
-            </div>
-         </div>
-         <div className="flex items-center gap-4">
-            <button onClick={() => setIsDarkMode(!isDarkMode)} className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all border ${isDarkMode ? 'bg-white/5 border-white/10 text-indigo-400' : 'bg-slate-100 border-slate-200 text-slate-500'}`}>
-               {isDarkMode ? <Sparkles className="w-4.5 h-4.5" /> : <Calculator className="w-4.5 h-4.5" />}
-            </button>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[10px] font-black border ${isDarkMode ? 'bg-indigo-600/20 border-indigo-500/20 text-indigo-400' : 'bg-slate-200 border-slate-300 text-slate-600'}`}>
-               {isSaving ? <Loader2 className="w-4 h-4 animate-spin"/> : 'ADM'}
-            </div>
-         </div>
-      </header>
-
-      {/* SIDEBAR DESKTOP */}
-      <aside className={`hidden md:flex w-72 flex-col p-8 border-r ${isDarkMode ? 'border-white/10 bg-[#0B0F1A]' : 'border-slate-200 bg-slate-50'} shrink-0 z-50 relative`}>
-        <div className="flex items-center gap-3 mb-10 px-2">
-            <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-indigo-600/30 shadow-2xl"><Calculator className="w-5 h-5 text-white"/></div>
-            <h1 className={`text-lg font-black italic uppercase tracking-tighter ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>HPPMASTER</h1>
-        </div>
-        
-        <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.4em] mb-4 mt-6 italic px-2">Koleksi Produk Aktif</p>
-        <div className="flex-1 space-y-2 overflow-y-auto no-scrollbar pr-1 max-h-[350px] mb-8">
-           {products.map(p => (
-             <button key={p.id} onClick={() => setActiveProductId(p.id)} className={cn(
-               "w-full flex items-center justify-between gap-3 px-5 py-4 rounded-2xl transition-all font-black text-[10px] uppercase italic tracking-widest text-left group border",
-               p.id === activeProductId 
-                  ? "bg-indigo-600 text-white border-transparent shadow-[0_10px_30px_rgba(79,70,229,0.3)]" 
-                  : (isDarkMode ? "bg-white/5 text-slate-500 border-transparent hover:bg-white/10" : "bg-white text-slate-400 border-slate-200 hover:bg-slate-100 shadow-sm")
-             )}>
-                <div className="flex items-center gap-3 overflow-hidden">
-                   <div className={cn("w-2 h-2 rounded-full", p.id === activeProductId ? "bg-white" : "bg-slate-700")} />
-                   <span className="truncate">{p.name}</span>
-                </div>
-                {products.length > 1 && (
-                  <X onClick={(e) => deleteProduct(p.id, e)} className="w-3.5 h-3.5 opacity-0 group-hover:opacity-100 hover:text-white transition-opacity" />
-                )}
-             </button>
-           ))}
-           <button onClick={addProduct} className={`w-full flex items-center gap-3 px-5 py-3.5 rounded-2xl border-2 border-dashed ${isDarkMode ? 'border-white/5 text-slate-600 hover:border-indigo-500/50' : 'border-slate-300 text-slate-400 hover:border-indigo-500'} transition-all font-black text-[10px] uppercase italic tracking-widest`}>
-              <Plus className="w-4 h-4"/> Tambah Item HPP
-           </button>
-        </div>
-
-        <nav className="space-y-1.5 mb-8 pt-6 border-t border-white/5">
-           <button onClick={()=>setActiveTab('dashboard')} className={cn("w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-black text-[10px] uppercase italic tracking-widest", activeTab==='dashboard'? (isDarkMode?"bg-white/10 text-white":"bg-indigo-50 text-indigo-700"):"text-slate-500 hover:bg-white/5")}>
-              <LayoutDashboard className="w-4.5 h-4.5"/> Ringkasan
-           </button>
-           <button onClick={()=>setActiveTab('materials')} className={cn("w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-black text-[10px] uppercase italic tracking-widest", activeTab==='materials'? (isDarkMode?"bg-white/10 text-white":"bg-indigo-50 text-indigo-700"):"text-slate-500 hover:bg-white/5")}>
-              <Database className="w-4.5 h-4.5"/> Bahan Baku
-           </button>
-           <button onClick={()=>setActiveTab('strategy')} className={cn("w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-black text-[10px] uppercase italic tracking-widest", activeTab==='strategy'? (isDarkMode?"bg-white/10 text-white":"bg-indigo-50 text-indigo-700"):"text-slate-500 hover:bg-white/5")}>
-              <TrendingUp className="w-4.5 h-4.5"/> Strategi Harga
-           </button>
-           <button onClick={()=>setActiveTab('report')} className={cn("w-full flex items-center gap-3 px-5 py-4 rounded-2xl transition-all font-black text-[10px] uppercase italic tracking-widest", activeTab==='report'? (isDarkMode?"bg-white/10 text-white":"bg-indigo-50 text-indigo-700"):"text-slate-500 hover:bg-white/5")}>
-              <FileText className="w-4.5 h-4.5"/> Laporan Audit
-           </button>
-        </nav>
-
-        <div className="mt-auto space-y-3 pt-6 border-t border-white/5 font-black uppercase text-[10px] italic">
-           <button onClick={() => setIsDarkMode(!isDarkMode)} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all ${isDarkMode ? 'text-slate-500 hover:bg-white/5' : 'text-slate-600 hover:bg-slate-200'}`}>
-              <div className="w-4.5 h-4.5 flex items-center justify-center">{isDarkMode ? <Sparkles className="w-4 h-4" /> : <Calculator className="w-4 h-4" />}</div>
-              {isDarkMode ? 'Aktifkan Mode Terang' : 'Aktifkan Mode Gelap'}
-           </button>
-           <button onClick={handleLogout} className="w-full flex items-center gap-4 px-5 py-4 text-slate-700 hover:text-rose-500 transition-colors">
-              <LogOut className="w-4.5 h-4.5"/> Keluar Aplikasi
-           </button>
-        </div>
-      </aside>
-
-      {/* 📊 MAIN CONTENT */}
-      <main className="flex-1 flex flex-col min-w-0 bg-transparent overflow-hidden">
-        <header className={`hidden md:flex h-20 items-center justify-between px-10 shrink-0 z-40 transition-colors duration-500 border-b ${isDarkMode ? 'border-white/5 bg-[#0B0F1A]/40' : 'border-slate-200 bg-white shadow-xl shadow-slate-100/50'}`}>
-           <div className="flex flex-col">
-              <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.5em] italic leading-none mb-3">Enterprise Suite v3.2</p>
-              <h1 className={`text-3xl font-black italic tracking-tighter uppercase leading-none ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{activeTab === 'dashboard' ? 'RINGKASAN UTAMA' : activeTab.replace('-',' ')}</h1>
-           </div>
-           <div className="flex items-center gap-6">
-              <div className={`px-5 py-2.5 rounded-2xl border flex items-center gap-3 transition-colors ${isDarkMode ? 'bg-white/5 border-white/10 text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
-                 <div className={`w-2.5 h-2.5 rounded-full animate-pulse ${isSaving ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-                 <span className="text-[10px] font-black uppercase tracking-widest">{isSaving ? 'DATABASE SYNCING...' : 'CLOUD SECURED ✓'}</span>
-              </div>
-              <button onClick={handleSave} className="h-12 px-8 bg-indigo-600 text-white font-black text-[10px] uppercase rounded-2xl shadow-[0_10px_25px_rgba(79,70,229,0.3)] active:scale-95 transition-all flex items-center gap-3 hover:bg-indigo-500 italic"><Save className="w-4 h-4" /> Komit Perubahan</button>
-           </div>
-        </header>
-
-        <div className="flex-1 overflow-y-auto p-5 md:p-10 scroll-smooth custom-scrollbar pb-44 md:pb-10 w-full relative">
-          <div className="max-w-[1240px] mx-auto w-full">
-            <AnimatePresence mode="wait">
-              {activeTab === 'dashboard' && (
-                <motion.div key="db" initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }} className="space-y-10">
-                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
-                      <Card isHero title="Laba Bersih Bulanan" value={formatCompactIDR(m.totalProfit)} icon={Trophy} clr="amber" trend={12} subtext="Hasil Financial Bersih" />
-                      <Card isHero title="Titik BEP Harian" value={`${m.bepDaily} Unit`} icon={Target} clr="rose" trend={2} subtext="Ambang Batas Risiko" />
-                      <Card title="HPP Produk (HPP)" value={formatIDR(m.hppPerUnit)} icon={Calculator} clr="emerald" subtext="HPP Unit Produksi" />
-                      <Card title="Harga Rekomendasi" value={formatIDR(m.recommendedPrice)} icon={TrendingUp} clr="indigo" subtext="Target Pasar Optimal" />
-                   </div>
-                   <div className={`glass-card rounded-[32px] md:rounded-[48px] p-6 md:p-12 border ${isDarkMode ? 'bg-white/[0.02] border-white/10' : 'bg-slate-100 border-slate-200'} h-[300px] md:h-[480px] shadow-inner`}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={[{n:'100',p:m.totalProfit/10},{n:'500',p:m.totalProfit/2},{n:'1k',p:m.totalProfit},{n:'1.5k',p:m.totalProfit*1.5}]}>
-                          <defs><linearGradient id="cP" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366f1" stopOpacity={0.4}/><stop offset="95%" stopColor="#6366f1" stopOpacity={0}/></linearGradient></defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? "#ffffff05" : "#0000000a"} vertical={false}/>
-                          <XAxis dataKey="n" stroke="#475569" fontSize={11} axisLine={false} tickLine={false}/>
-                          <RechartsTooltip contentStyle={{background: isDarkMode ? '#0a0b1e' : '#ffffff', border:'none', borderRadius:'20px', fontSize:'12px', boxShadow:'0 20px 50px rgba(0,0,0,0.1)'}}/>
-                          <Area type="monotone" dataKey="p" stroke="#6366f1" fillOpacity={1} fill="url(#cP)" strokeWidth={5} />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                   </div>
-                </motion.div>
-              )}
-
-              {activeTab === 'materials' && (
-                <motion.div key="mat" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
-                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {activeProduct.materials.map(item => (
-                        <div key={item.id} className={`border rounded-[32px] p-8 space-y-6 shadow-xl transition-all ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200 shadow-slate-200/50'}`}>
-                           <input 
-                              value={item.name} 
-                              onChange={e => updateMaterial(item.id, 'name', e.target.value)}
-                              className={`bg-transparent border-none p-0 text-xl font-black italic uppercase focus:ring-0 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} 
-                           />
-                           <div className="grid grid-cols-2 gap-4">
-                              <div className={`${isDarkMode ? 'bg-white/5' : 'bg-slate-50'} p-4 rounded-2xl space-y-1`}><p className="text-[8px] font-black uppercase text-slate-500 italic">Harga Beli</p><input type="number" value={item.packPrice} onChange={e => updateMaterial(item.id, 'packPrice', e.target.value)} className="bg-transparent border-none p-0 w-full font-black italic focus:ring-0" /></div>
-                              <div className="bg-rose-500/5 p-4 rounded-2xl space-y-1"><p className="text-[8px] font-black uppercase text-rose-400 italic">Susut %</p><input type="number" value={item.waste} onChange={e => updateMaterial(item.id, 'waste', e.target.value)} className="bg-transparent border-none p-0 w-full font-black italic focus:ring-0" /></div>
-                           </div>
-                        </div>
-                      ))}
-                      <button onClick={()=>{}} className={`border-2 border-dashed rounded-[32px] p-10 flex flex-col items-center justify-center gap-4 transition-all ${isDarkMode ? 'bg-white/3 border-white/10 text-slate-500 hover:text-indigo-400 hover:bg-white/5' : 'bg-slate-50 border-slate-300 text-slate-400 hover:border-indigo-400 hover:text-indigo-600'}`}><Plus className="w-10 h-10"/> <span className="font-black text-[10px] uppercase italic tracking-[0.3em]">Tambah Bahan Baru</span></button>
-                   </div>
-                </motion.div>
-              )}
-
-              {activeTab === 'strategy' && (
-                <motion.div key="str" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-10">
-                   <div className="flex flex-col md:flex-row gap-6 md:gap-10">
-                    {[
-                      { l: 'Tingkat Kompetitif', m: 25, ic: Sparkles, clr: 'amber', hint: 'Pasar Massal' },
-                      { l: 'Tingkat Standar Pro', m: 45, ic: Trophy, clr: 'indigo', hint: 'Sangat Disarankan' },
-                      { l: 'Tingkat Premium', m: 70, ic: Gem, clr: 'rose', hint: 'High-Value Brand' }
-                    ].map(t => (
-                      <div key={t.l} onClick={() => updateActiveProduct('targetMargin', t.m)} className={cn(
-                        "flex-1 border-2 rounded-[32px] md:rounded-[48px] p-8 md:p-12 transition-all cursor-pointer relative overflow-hidden group",
-                        activeProduct.targetMargin===t.m ? `border-${t.clr}-500 bg-${t.clr}-500/[0.05] scale-[1.03] shadow-2xl` : (isDarkMode ? "bg-white/5 border-white/10 opacity-50" : "bg-white border-slate-200 opacity-60")
-                      )}>
-                        {t.m === 45 && <div className="absolute top-6 right-6 px-4 py-1.5 bg-indigo-600 text-white text-[9px] font-black uppercase rounded-full shadow-lg italic tracking-widest">Pilihan Utama</div>}
-                        <div className="flex justify-between items-start mb-10"><div className={cn("w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center", `bg-${t.clr}-500/20 text-${t.clr}-400`)}><t.ic className="w-7 h-7" /></div><p className="text-3xl md:text-5xl font-black italic tracking-tighter leading-none">{t.m}%</p></div>
-                        <h4 className={cn("text-xl md:text-2xl font-black uppercase italic tracking-tighter leading-none mb-1", `text-${t.clr}-400`)}>{t.l}</h4>
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-600 italic leading-none">{t.hint}</p>
-                      </div>
-                    ))}
-                   </div>
-                   <div className={`border-2 rounded-[40px] md:rounded-[64px] p-10 md:p-20 shadow-2xl relative overflow-hidden ${isDarkMode ? 'bg-[#0B0F1A] border-indigo-500/20' : 'bg-white border-slate-200 shadow-slate-200/50'}`}>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                         <div className="space-y-4"><p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em] italic">Hasil Harga Jual</p><p className={`text-4xl md:text-7xl font-black italic tracking-tighter ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{formatIDR(m.recommendedPrice)}</p></div>
-                         <div className="space-y-4"><p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.5em] italic text-right">Target Unit Harian</p><p className="text-4xl md:text-7xl font-black italic tracking-tighter text-emerald-500 text-right">{m.bepDaily} Unit</p></div>
-                      </div>
-                      <div className="pt-10 mt-10 border-t border-white/5"><p className="text-[9px] font-black text-slate-600 uppercase tracking-[0.5em] italic mb-6">Atur Margin Manual: {activeProduct.targetMargin}%</p><input type="range" min="5" max="95" value={activeProduct.targetMargin} onChange={e=>updateActiveProduct('targetMargin', Number(e.target.value))} className="w-full h-1.5 bg-white/5 rounded-full appearance-none accent-indigo-500" /></div>
-                   </div>
-                </motion.div>
-              )}
-
-              {activeTab === 'report' && (
-                <motion.div key="rep" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="max-w-4xl mx-auto space-y-10">
-                   <div className="bg-white text-slate-900 rounded-[32px] md:rounded-[64px] p-8 sm:p-14 md:p-20 shadow-[0_50px_100px_rgba(0,0,0,0.5)] min-h-[800px] border border-slate-100 font-bold relative overflow-hidden">
-                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.04] rotate-[20deg] text-[100px] md:text-[220px] font-black pointer-events-none select-none tracking-widest italic whitespace-nowrap">LAPORAN AUDIT</div>
-                      <div className="flex justify-between items-start border-b-[6px] border-slate-900 pb-12 mb-16 relative z-10">
-                         <div><h1 className="text-3xl md:text-6xl font-black uppercase italic tracking-tighter leading-none border-l-[18px] border-indigo-600 pl-8">AUDIT <span className="text-indigo-600">BISNIS</span></h1><p className="text-[12px] font-black uppercase tracking-[0.4em] italic mt-3 text-slate-400">Sistem Strategi Usaha UMKM</p></div>
-                         <div className="w-16 h-16 md:w-20 bg-slate-900 rounded-[28px] flex items-center justify-center text-white"><LucidePieChart className="w-10 h-10"/></div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 mb-16 relative z-10 font-black italic">
-                        <div className="bg-slate-100 rounded-[24px] md:rounded-[32px] p-6 md:p-8 text-center"><p className="text-[10px] text-slate-400 uppercase leading-none mb-2 tracking-widest italic leading-none">Harga Jual</p><p className="text-xl md:text-2xl">{formatCompactIDR(m.recommendedPrice).replace('Rp','').trim()}</p></div>
-                        <div className="bg-indigo-50 rounded-[24px] md:rounded-[32px] p-6 md:p-8 text-center text-indigo-700"><p className="text-[10px] text-indigo-400 uppercase leading-none mb-2 tracking-widest italic leading-none">HPP Produk</p><p className="text-xl md:text-2xl">{formatCompactIDR(m.hppPerUnit).replace('Rp','').trim()}</p></div>
-                        <div className="bg-rose-50 rounded-[24px] md:rounded-[32px] p-6 md:p-8 text-center text-rose-700"><p className="text-[10px] text-rose-500 uppercase leading-none mb-2 tracking-widest italic leading-none">Target Unit</p><p className="text-4xl leading-none">{m.bepDaily}</p></div>
-                        <div className="bg-slate-900 rounded-[24px] md:rounded-[32px] p-6 md:p-8 text-center text-white shadow-xl"><p className="text-[10px] text-slate-500 uppercase leading-none mb-2 tracking-widest italic leading-none">Laba Bersih</p><p className="text-xl md:text-2xl text-indigo-400">{formatCompactIDR(m.totalProfit).replace('Rp','').trim()}</p></div>
-                      </div>
-                      <div className="p-8 md:p-16 bg-slate-50 border-l-[12px] border-indigo-600 rounded-r-[56px] italic leading-[2.2] text-slate-600 text-[14px] sm:text-[18px] md:text-[20px] text-justify relative z-10 font-bold">Laporan Audit mendeteksi efisiensi operasional sistem tetap stabil. Target minimal harian sebesar <span className="text-indigo-900 font-black underline mx-2">{m.bepDaily} UNIT</span> wajib dipertahankan untuk mengimbangi beban organisasi sebesar <span className="text-rose-800 font-black mx-2">{formatIDR(m.totalFixedMonthly)}</span> per bulan.</div>
-                      <button onClick={()=>window.print()} className="w-full h-24 bg-slate-900 text-white rounded-[40px] text-lg font-black uppercase mt-12 shadow-2xl flex items-center justify-center gap-4 italic tracking-widest print:hidden active:scale-95 transition-all"><Printer className="w-7 h-7"/> UNDUH LAPORAN AUDIT PDF</button>
-                   </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-
-        <button onClick={handleSave} className="fixed bottom-24 left-6 right-6 md:hidden h-16 bg-indigo-600 text-white font-black uppercase text-sm rounded-[20px] shadow-[0_15px_30px_rgba(79,70,229,0.5)] z-[100] border-t border-white/20 active:scale-95 transition-all flex items-center justify-center gap-3 italic tracking-widest">
-           {isSaving ? <Loader2 className="w-5 h-5 animate-spin"/> : <Save className="w-6 h-6"/>} Simpan Perubahan Data
-        </button>
-
-        <nav className="fixed bottom-0 left-0 right-0 md:hidden bg-[#0a0b1e]/95 backdrop-blur-2xl border-t border-white/10 flex justify-around px-2 pb-8 pt-4 z-[110] shadow-[0_-15px_40px_rgba(0,0,0,0.8)]">
-           <MobileNavItem icon={LayoutDashboard} label="Ringkasan" active={activeTab==='dashboard'} onClick={()=>setActiveTab('dashboard')}/>
-           <MobileNavItem icon={Database} label="Gudang" active={activeTab==='materials'} onClick={()=>setActiveTab('materials')}/>
-           <MobileNavItem icon={TrendingUp} label="Harga" active={activeTab==='strategy'} onClick={()=>setActiveTab('strategy')}/>
-           <MobileNavItem icon={FileText} label="Laporan" active={activeTab==='report'} onClick={()=>setActiveTab('report')}/>
-        </nav>
-      </main>
-    </div>
-  );
-};
-
-export default App;
