@@ -5,7 +5,7 @@ import {
   Save, FileText, LayoutDashboard, Database, X,
   Loader2, LogOut, Sun, Moon, ChevronDown, Package,
   DollarSign, Percent, ShoppingCart, AlertCircle, CheckCircle,
-  Printer, ToggleLeft, ToggleRight, Edit2, BarChart2, Zap
+  Printer, ToggleLeft, ToggleRight, Edit2, BarChart2, Zap, Copy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
@@ -331,6 +331,9 @@ export default function App() {
               </select>
               <button onClick={addProduct} className="w-7 h-7 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all">
                 <Plus className="w-4 h-4" />
+              </button>
+              <button onClick={duplicateProduct} className="w-7 h-7 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all">
+                <Copy className="w-3.5 h-3.5" />
               </button>
             </div>
             <div className="flex items-center gap-2">
