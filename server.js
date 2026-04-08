@@ -339,7 +339,11 @@ app.post('/api/ai-analyze', async (req, res) => {
   res.json({ text: `❌ AI GAGAL (Format Native 2.0): ${lastError}. \n\nPastikan kuota API di Google AI Studio mencukupi.` });
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`✅ Backend server running on http://localhost:${PORT}`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`✅ Backend server running on http://localhost:${PORT}`);
+  });
+}
+
+export default app;
