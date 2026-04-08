@@ -43,6 +43,11 @@ const calcMetrics = (p) => {
   const profitUnit = sellPrice - hppUnit - sellPrice * (fee / 100);
   const bep = profitUnit > 0 ? Math.ceil((fixedTotal / profitUnit) / 30) : 0;
 
+  // Recommendation Engine
+  const recommendedMargin = 40; // Standar UMKM Sehat
+  const suggestedPrice = Math.round(hppUnit / (1 - (recommendedMargin / 100) - (fee / 100)));
+  const suggestedTarget = Math.ceil(bep * 1.5); // BEP + 50% buffer keamanan
+
   return {
     matTotal: Math.round(matTotal),
     fixedTotal: Math.round(fixedTotal),
@@ -55,7 +60,12 @@ const calcMetrics = (p) => {
     bepDaily: bep,
     roi: hppUnit > 0 ? Math.round((profitUnit / hppUnit) * 100) : 0,
     roiYearly: hppUnit > 0 ? Math.round(((profitUnit * vol * 12) / (matTotal * vol + fixedTotal)) * 100) : 0,
-    paybackMonths: profitUnit > 0 ? Math.ceil((matTotal * vol) / (profitUnit * vol)) : 0
+    paybackMonths: profitUnit > 0 ? Math.ceil((matTotal * vol) / (profitUnit * vol)) : 0,
+    recommendation: {
+      price: suggestedPrice,
+      target: suggestedTarget,
+      margin: recommendedMargin
+    }
   };
 };
 
@@ -254,15 +264,24 @@ export default function App() {
           <div className="p-3 border-b border-slate-100 dark:border-slate-800">
             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-2 mb-2">Produk</p>
             <div className="space-y-0.5 max-h-44 overflow-y-auto no-scrollbar">
-              {products.map(p => (
-                <button key={p.id} onClick={() => setActiveId(p.id)}
-                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-colors group ${p.id === activeId ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
-                  <span className="truncate">{p.name}</span>
-                  {products.length > 1 && (
-                    <X onClick={e => delProduct(p.id, e)} className="w-3 h-3 opacity-0 group-hover:opacity-60 hover:opacity-100 shrink-0 ml-1" />
-                  )}
-                </button>
-              ))}
+              {products.map(p => {
+                const metrics = calcMetrics(p);
+                return (
+                  <button key={p.id} onClick={() => setActiveId(p.id)}
+                    className={`w-full flex flex-col items-start px-3 py-2.5 rounded-xl text-xs font-medium transition-all group border ${p.id === activeId ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800' : 'text-slate-600 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+                    <div className="flex items-center justify-between w-full mb-1">
+                      <span className="truncate max-w-[100px] font-bold">{p.name}</span>
+                      {products.length > 1 && (
+                        <X onClick={e => delProduct(p.id, e)} className="w-3 h-3 opacity-0 group-hover:opacity-60 hover:opacity-100 shrink-0" />
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 opacity-70">
+                      <span className="text-[9px] px-1 bg-slate-100 dark:bg-slate-800 rounded">{metrics.margin}%</span>
+                      <span className="text-[9px]">{fmtShort(metrics.sellPrice)}</span>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
             <button onClick={addProduct} className="w-full flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors mt-1">
               <Plus className="w-3 h-3" /> Tambah produk
@@ -357,6 +376,31 @@ export default function App() {
                 {/* ── DASHBOARD ── */}
                 {activeTab === 'dashboard' && (
                   <motion.div key="dash" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
+                    {/* Strategic Recommendation - The Decision Maker */}
+                    <div className="bg-emerald-600 dark:bg-emerald-500 rounded-xl p-5 shadow-lg shadow-emerald-500/20 text-white overflow-hidden relative">
+                      <Zap className="absolute -right-4 -bottom-4 w-24 h-24 text-white/10 rotate-12" />
+                      <div className="relative z-10">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-100 mb-3 flex items-center gap-1.5">
+                          <CheckCircle className="w-3 h-3" /> Rekomendasi Strategis
+                        </p>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                            <div>
+                              <p className="text-[10px] text-emerald-100 opacity-80">Harga Jual Ideal</p>
+                              <p className="text-lg font-bold">{fmt(m.recommendation.price)}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-[10px] text-emerald-100 opacity-80">Target Aman</p>
+                              <p className="text-lg font-bold">{m.recommendation.target} unit/hari</p>
+                            </div>
+                          </div>
+                          <p className="text-xs text-white/90 leading-relaxed italic">
+                            "Untuk mencapai profit maksimal dengan risiko rendah, gunakan margin <strong>{m.recommendation.margin}%</strong> dan pastikan penjualan harian di atas target aman."
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-3">
                       <Stat label="HPP per Unit" value={fmtShort(m.hppUnit)} sub="Biaya pokok" accent tip="Modal dasar untuk memproduksi 1 unit, termasuk bahan baku dan porsi biaya tetap operasional." />
                       <Stat label="Harga Jual" value={fmtShort(m.sellPrice)} sub="Rekomendasi" tip="Harga jual ideal agar target keuntungan Anda tercapai setelah dipotong biaya admin marketplace." />
