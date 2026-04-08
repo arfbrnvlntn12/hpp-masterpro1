@@ -50,7 +50,7 @@ const calcMetrics = (p) => {
     sellPrice: Math.round(sellPrice),
     profitUnit: Math.round(profitUnit),
     profitMonthly: Math.round(profitUnit * vol),
-    margin: Math.round((profitUnit / sellPrice) * 100),
+    margin: sellPrice > 0 ? Math.round((profitUnit / sellPrice) * 100) : 0,
     bepDaily: bep,
     roi: hppUnit > 0 ? Math.round((profitUnit / hppUnit) * 100) : 0,
   };
@@ -70,6 +70,8 @@ const Input = ({ label, type = 'text', prefix, suffix, ...props }) => (
         type={type}
         inputMode={type === 'number' ? 'decimal' : undefined}
         className="flex-1 bg-transparent text-sm font-medium text-slate-800 dark:text-slate-100 outline-none min-w-0 placeholder:text-slate-300"
+        value={props.value === 0 ? '' : props.value}
+        onFocus={(e) => e.target.select()}
         {...props}
       />
       {suffix && <span className="text-slate-400 text-xs shrink-0">{suffix}</span>}
@@ -330,6 +332,7 @@ export default function App() {
               {/* Product Name Edit */}
               <div className="mb-5">
                 <input value={active?.name || ''} onChange={e => update('name', e.target.value)}
+                  onFocus={(e) => e.target.select()}
                   className="text-lg font-bold bg-transparent outline-none text-slate-800 dark:text-slate-100 border-b-2 border-transparent focus:border-emerald-400 transition-colors w-full"
                   placeholder="Nama Produk"
                 />
@@ -421,6 +424,7 @@ export default function App() {
                         <div key={item.id} className="bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 rounded-xl p-4">
                           <div className="flex items-start justify-between mb-3">
                             <input value={item.name} onChange={e => updateMat(item.id, 'name', e.target.value)}
+                              onFocus={(e) => e.target.select()}
                               className="font-semibold text-sm bg-transparent outline-none text-slate-800 dark:text-slate-100 border-b border-transparent focus:border-emerald-400 transition-colors" />
                             <div className="flex items-center gap-2">
                               <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">{fmt(unitCost)}</span>
@@ -485,7 +489,9 @@ export default function App() {
                         {/* Row 2: amount input full width */}
                         <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-700/60 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-emerald-500/30">
                           <span className="text-xs text-slate-400 shrink-0">Rp</span>
-                          <input type="number" inputMode="decimal" value={item.amount} onChange={e => updateCost(item.id, 'amount', Number(e.target.value))}
+                          <input type="number" inputMode="decimal" value={item.amount === 0 ? '' : item.amount} 
+                            onChange={e => updateCost(item.id, 'amount', Number(e.target.value))}
+                            onFocus={(e) => e.target.select()}
                             className="bg-transparent text-sm font-medium outline-none flex-1 text-right text-slate-700 dark:text-slate-200" />
                           <span className="text-xs text-slate-400 shrink-0">/bln</span>
                         </div>
@@ -520,7 +526,13 @@ export default function App() {
                     <div className="bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 rounded-xl p-4">
                       <div className="flex items-center justify-between mb-3">
                         <Label>Margin kustom</Label>
-                        <span className="text-sm font-bold text-emerald-600 dark:text-emerald-400">{active?.targetMargin}%</span>
+                        <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-700/60 border border-slate-200 dark:border-slate-600 rounded-lg px-2 py-1 focus-within:ring-2 focus-within:ring-emerald-500/30">
+                          <input type="number" value={active?.targetMargin === 0 ? '' : active?.targetMargin} 
+                            onChange={e => update('targetMargin', Number(e.target.value))}
+                            onFocus={(e) => e.target.select()}
+                            className="w-10 bg-transparent text-sm font-bold text-emerald-600 dark:text-emerald-400 outline-none text-right" />
+                          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">%</span>
+                        </div>
                       </div>
                       <input type="range" min="5" max="90" value={active?.targetMargin}
                         onChange={e => update('targetMargin', Number(e.target.value))}
