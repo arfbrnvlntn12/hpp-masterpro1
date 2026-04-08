@@ -5,7 +5,7 @@ import {
   Save, FileText, LayoutDashboard, Database, X,
   Loader2, LogOut, Sun, Moon, ChevronDown, Package,
   DollarSign, Percent, ShoppingCart, AlertCircle, CheckCircle,
-  Printer, ToggleLeft, ToggleRight, Edit2, BarChart2
+  Printer, ToggleLeft, ToggleRight, Edit2, BarChart2, Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
@@ -50,9 +50,12 @@ const calcMetrics = (p) => {
     sellPrice: Math.round(sellPrice),
     profitUnit: Math.round(profitUnit),
     profitMonthly: Math.round(profitUnit * vol),
+    profitAnnual: Math.round(profitUnit * vol * 12),
     margin: sellPrice > 0 ? Math.round((profitUnit / sellPrice) * 100) : 0,
     bepDaily: bep,
     roi: hppUnit > 0 ? Math.round((profitUnit / hppUnit) * 100) : 0,
+    roiYearly: hppUnit > 0 ? Math.round(((profitUnit * vol * 12) / (matTotal * vol + fixedTotal)) * 100) : 0,
+    paybackMonths: profitUnit > 0 ? Math.ceil((matTotal * vol) / (profitUnit * vol)) : 0
   };
 };
 
@@ -79,9 +82,20 @@ const Input = ({ label, type = 'text', prefix, suffix, ...props }) => (
   </div>
 );
 
-const Stat = ({ label, value, sub, accent = false, small = false }) => (
-  <div className={`rounded-xl p-4 border ${accent ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800' : 'bg-white dark:bg-slate-800/60 border-slate-100 dark:border-slate-700/60'}`}>
-    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 font-medium">{label}</p>
+const Stat = ({ label, value, sub, accent = false, small = false, tip = null }) => (
+  <div className={`rounded-xl p-4 border relative group ${accent ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800' : 'bg-white dark:bg-slate-800/60 border-slate-100 dark:border-slate-700/60'}`}>
+    <div className="flex items-center gap-1.5 mb-1">
+      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{label}</p>
+      {tip && (
+        <div className="relative inline-block cursor-help transition-opacity opacity-40 hover:opacity-100">
+           <AlertCircle className="w-3 h-3 text-slate-400" />
+           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-900 text-[10px] text-white rounded-lg invisible group-hover:visible z-[100] shadow-2xl leading-relaxed">
+             {tip}
+             <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-900" />
+           </div>
+        </div>
+      )}
+    </div>
     <p className={`font-bold leading-tight ${accent ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-800 dark:text-slate-100'} ${small ? 'text-base' : 'text-xl'}`}>{value}</p>
     {sub && <p className="text-xs text-slate-400 mt-0.5">{sub}</p>}
   </div>
@@ -344,15 +358,15 @@ export default function App() {
                 {activeTab === 'dashboard' && (
                   <motion.div key="dash" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
-                      <Stat label="HPP per Unit" value={fmtShort(m.hppUnit)} sub="Biaya pokok" accent />
-                      <Stat label="Harga Jual" value={fmtShort(m.sellPrice)} sub="Rekomendasi" />
-                      <Stat label="Laba per Unit" value={fmtShort(m.profitUnit)} sub={`Margin ${m.margin}%`} />
-                      <Stat label="Laba Bulanan" value={fmtShort(m.profitMonthly)} sub={`${active?.expectedSalesVolume} unit/bln`} />
+                      <Stat label="HPP per Unit" value={fmtShort(m.hppUnit)} sub="Biaya pokok" accent tip="Modal dasar untuk memproduksi 1 unit, termasuk bahan baku dan porsi biaya tetap operasional." />
+                      <Stat label="Harga Jual" value={fmtShort(m.sellPrice)} sub="Rekomendasi" tip="Harga jual ideal agar target keuntungan Anda tercapai setelah dipotong biaya admin marketplace." />
+                      <Stat label="Laba per Unit" value={fmtShort(m.profitUnit)} sub={`Margin ${m.margin}%`} tip="Keuntungan bersih yang Anda dapatkan dari setiap 1 unit produk yang terjual." />
+                      <Stat label="Laba Bulanan" value={fmtShort(m.profitMonthly)} sub={`${active?.expectedSalesVolume} unit/bln`} tip="Estimasi total keuntungan bersih dalam sebulan berdasarkan target volume penjualan Anda." />
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
-                      <Stat label="BEP Harian" value={`${m.bepDaily} unit/hari`} sub="Titik balik modal" small />
-                      <Stat label="ROI" value={`${m.roi}%`} sub="Return on investment" small />
+                      <Stat label="BEP Harian" value={`${m.bepDaily} unit/hari`} sub="Titik balik modal" small tip="Jumlah minimum produk yang HARUS terjual setiap hari agar bisnis Anda tidak rugi (impas)." />
+                      <Stat label="ROI Tahunan" value={`${m.roiYearly}%`} sub="Return on Investment" small tip="Persentase keuntungan tahunan dibanding modal yang Anda putar. Semakin tinggi, semakin cepat modal kembali." />
                     </div>
 
                     {/* Health check */}
@@ -362,8 +376,8 @@ export default function App() {
                       </p>
                       <div className="space-y-2.5">
                         {[
-                          { label: 'Margin keuntungan', val: m.margin, unit: '%', good: m.margin >= 30, tip: m.margin >= 30 ? 'Sehat' : 'Terlalu rendah' },
-                          { label: 'Biaya bahan baku', val: m.hppUnit > 0 ? Math.round((m.matTotal / m.hppUnit) * 100) : 0, unit: '% dari HPP', good: true, tip: 'Komponen utama' },
+                          { label: 'Margin keuntungan', val: m.margin, unit: '%', good: m.margin >= 30, tip: m.margin >= 30 ? 'Sangat kompetitif untuk skala UMKM' : 'Sangat tipis, harga Anda terancam rugi jika ada biaya tak terduga' },
+                          { label: 'Biaya bahan baku', val: m.hppUnit > 0 ? Math.round((m.matTotal / m.hppUnit) * 100) : 0, unit: '% dari HPP', good: true, tip: 'Proporsi modal bahan baku terhadap total biaya produksi' },
                         ].map(item => (
                           <div key={item.label} className="flex items-center justify-between">
                             <span className="text-xs text-slate-500 dark:text-slate-400">{item.label}</span>
@@ -565,11 +579,33 @@ export default function App() {
                       </div>
                     </div>
 
+                    {/* What-If Simulation */}
+                    <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+                       <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5 uppercase tracking-wider">
+                         <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> Simulasi Skenario
+                       </p>
+                       <div className="space-y-3">
+                         <div className="flex items-center justify-between">
+                            <span className="text-xs text-slate-500">Jika bahan naik 10%...</span>
+                            <span className="text-xs font-semibold text-red-500">Laba turun {fmt((m.matTotal * 0.1) * active?.expectedSalesVolume)}/bln</span>
+                         </div>
+                         <div className="flex items-center justify-between">
+                            <span className="text-xs text-slate-500">Jika volume turun 30%...</span>
+                            <span className="text-xs font-semibold text-amber-500">ROI jadi {Math.round(m.roiYearly * 0.7)}%</span>
+                         </div>
+                         <div className="flex items-center justify-between">
+                            <span className="text-xs text-slate-500 text-emerald-600 font-medium">Saran: Minimal jual {m.bepDaily} unit/hari untuk aman.</span>
+                         </div>
+                       </div>
+                    </div>
+
                     {/* Margin vs. Fee warning */}
                     {(Number(active?.targetMargin) + Number(active?.marketplaceFee)) >= 90 && (
                       <div className="flex items-start gap-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
                         <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                        <p className="text-xs text-amber-700 dark:text-amber-300">Margin + fee marketplace terlalu tinggi ({'>'} 90%). Harga jual bisa tidak kompetitif.</p>
+                        <p className="text-xs text-amber-700 dark:text-amber-300 font-medium leading-relaxed">
+                          ⚠️ Waduh, harga Anda kemungkinan sulit bersaing. Total margin & fee ({(Number(active?.targetMargin) + Number(active?.marketplaceFee))}%) terlalu tinggi. Pertimbangkan menaikkan efisiensi bahan atau mengurangi margin agar tetap kompetitif.
+                        </p>
                       </div>
                     )}
                   </motion.div>
@@ -586,6 +622,25 @@ export default function App() {
                         </div>
                         <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
                           <Calculator className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+
+                      {/* Executive Summary for Investors */}
+                      <div className="mb-6 p-4 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-800/50 rounded-xl">
+                        <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-2">Ringkasan Eksekutif</p>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <p className="text-[9px] text-slate-400">Modal Produksi/Bulan</p>
+                            <p className="text-xs font-bold text-slate-800 dark:text-slate-100">{fmt(active?.expectedSalesVolume * m.matTotal + m.fixedTotal)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] text-slate-400">Proyeksi Laba/Tahun</p>
+                            <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400">{fmt(m.profitAnnual)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[9px] text-slate-400">Efisiensi Modal (ROI)</p>
+                            <p className="text-xs font-bold text-slate-800 dark:text-slate-100">{m.roiYearly}% / thn</p>
+                          </div>
                         </div>
                       </div>
 
