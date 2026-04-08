@@ -230,6 +230,11 @@ export default function App() {
     setProducts(next);
     if (activeId === id) setActiveId(next[0].id);
   };
+  const duplicateProduct = () => {
+    const p = { ...active, id: 'p-' + Date.now(), name: active.name + ' (Copy)' };
+    setProducts(prev => [...prev, p]);
+    setActiveId(p.id);
+  };
 
   const save = async () => {
     setIsSaving(true);
@@ -321,9 +326,12 @@ export default function App() {
                 <Calculator className="w-3.5 h-3.5 text-white" />
               </div>
               <select value={activeId} onChange={e => setActiveId(e.target.value)}
-                className="bg-transparent text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none max-w-[140px]">
+                className="bg-transparent text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none max-w-[110px] truncate">
                 {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
+              <button onClick={addProduct} className="w-7 h-7 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all">
+                <Plus className="w-4 h-4" />
+              </button>
             </div>
             <div className="flex items-center gap-2">
               <button onClick={() => setIsDark(d => !d)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
@@ -351,7 +359,10 @@ export default function App() {
                 <span className={`w-1.5 h-1.5 rounded-full ${isSaving ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
                 {isSaving ? 'Menyimpan...' : 'Tersimpan'}
               </div>
-              <button onClick={save} className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors">
+              <button onClick={duplicateProduct} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors mr-2">
+                <Edit2 className="w-3 h-3" /> Salin
+              </button>
+              <button onClick={save} className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors shadow-lg shadow-emerald-500/10">
                 {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                 Simpan
               </button>
