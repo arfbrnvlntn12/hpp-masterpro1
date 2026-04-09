@@ -19,7 +19,12 @@ const fmtShort = (v) => {
 };
 
 const calcMetrics = (p) => {
-  if (!p) return {};
+  if (!p) return { 
+    matTotal: 0, fixedTotal: 0, hppUnit: 0, sellPrice: 0, profitUnit: 0, 
+    profitMonthly: 0, profitAnnual: 0, margin: 0, bepDaily: 0, roi: 0, roiYearly: 0, 
+    paybackDays: 0, unitsToGoal: [], risk: { level: 'N/A', score: 0, advice: '' },
+    recommendation: { price: 0, target: 0, margin: 0 } 
+  };
   const margin = Number(p.targetMargin) || 0;
   const fee = Number(p.marketplaceFee) || 0;
   const vol = Math.max(1, Number(p.expectedSalesVolume) || 1);
@@ -46,6 +51,7 @@ const calcMetrics = (p) => {
   // Recommendation Engine Refined
   const recommendedMargin = 40;
   const suggestedPrice = Math.round(hppUnit / (1 - (recommendedMargin / 100) - (fee / 100)));
+  const suggestedTarget = Math.ceil(bep * 1.5); // BEP + 50% buffer
   
   // Specific targets
   const profitGoals = [5000000, 10000000]; // Target 5jt & 10jt
@@ -237,6 +243,9 @@ export default function App() {
     load();
   }, []);
 
+  const active = useMemo(() => products.find(p => p.id === activeId) || products[0], [products, activeId]);
+  const m = useMemo(() => calcMetrics(active), [active]);
+
   // Hybrid Auto-Save System
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -266,9 +275,6 @@ export default function App() {
       window.location.reload();
     }
   };
-
-  const active = useMemo(() => products.find(p => p.id === activeId) || products[0], [products, activeId]);
-  const m = useMemo(() => calcMetrics(active), [active]);
 
   const update = (field, val) => setProducts(prev => prev.map(p => p.id === activeId ? { ...p, [field]: val } : p));
   const updateMat = (mid, field, val) => update('materials', active.materials.map(m => m.id === mid ? { ...m, [field]: val } : m));
