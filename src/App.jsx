@@ -73,6 +73,8 @@ const calcMetrics = (p) => {
     riskAdvice = 'Cukup terpengaruh kenaikan bahan. Pastikan stok aman.';
   }
 
+  const roiYearly = hppUnit > 0 ? Math.round(((profitUnit * vol * 12) / (matTotal * vol + fixedTotal)) * 100) : 0;
+
   return {
     matTotal: Math.round(matTotal),
     fixedTotal: Math.round(fixedTotal),
@@ -84,7 +86,7 @@ const calcMetrics = (p) => {
     margin: sellPrice > 0 ? Math.round((profitUnit / sellPrice) * 100) : 0,
     bepDaily: bep,
     roi: hppUnit > 0 ? Math.round((profitUnit / hppUnit) * 100) : 0,
-    roiYearly: hppUnit > 0 ? Math.round(((profitUnit * vol * 12) / (matTotal * vol + fixedTotal)) * 100) : 0,
+    roiYearly,
     paybackDays: profitUnit > 0 ? Math.ceil((matTotal * vol + fixedTotal) / (profitUnit * (vol/30))) : 0,
     unitsToGoal,
     risk: { level: riskLevel, score: Math.round(riskScore * 100), advice: riskAdvice },
@@ -211,7 +213,7 @@ export default function App() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [businessProfile, setBusinessProfile] = useState({ name: 'Usaha Saya', owner: 'Owner' });
 
-  const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+  const API = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5000/api' : '/api');
 
   const [lastSaved, setLastSaved] = useState(null);
 

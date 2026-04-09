@@ -34,7 +34,7 @@
   @page { margin: 16mm; size: A4; }
   
   /* 1. Reset Total */
-  body * { display: none !important; }
+  #root { display: none !important; }
   
   /* 2. Enable ONLY the print-root clone */
   #print-root, #print-root * { 
