@@ -163,107 +163,118 @@ const Badge = ({ children, color = 'slate' }) => {
 const OnboardingWizard = ({ step, setStep, active, update, addMaterial, updateMat, addCost, updateCost, onComplete, isDark }) => {
   const m = calcMetrics(active);
   
-  const steps = [
-    { title: 'Selamat Datang', desc: 'Hitung HPP & Tentukan Harga Jual dengan Mudah.' },
-    { title: 'Nama Produk', desc: 'Apa yang sedang Anda bangun hari ini?' },
-    { title: 'Bahan Baku', desc: 'Tambahkan bahan pertama produk Anda.' },
-    { title: 'Biaya Tetap', desc: 'Beban operasional (optional).' },
-    { title: 'Target Profit', desc: 'Berapa margin yang Anda inginkan?' },
-    { title: 'AHA Moment', desc: 'Inilah hasil kalkulasi Anda!' },
-  ];
+  const totalSteps = 6;
+  const isLast = step === totalSteps;
 
   return (
-    <div className={`fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm`}>
-      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800">
+    <div className={`fixed inset-0 z-[100] flex items-start md:items-center justify-center p-4 md:p-6 bg-slate-900/60 backdrop-blur-md overflow-y-auto`}>
+      <motion.div 
+        initial={{ opacity: 0, y: 20, scale: 0.95 }} 
+        animate={{ opacity: 1, y: 0, scale: 1 }} 
+        className="bg-white dark:bg-slate-900 w-full max-w-[480px] rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden border border-white/20 relative"
+      >
         
-        {/* Progress Bar */}
-        <div className="flex h-1 bg-slate-100 dark:bg-slate-800">
-          <motion.div animate={{ width: `${(step / steps.length) * 100}%` }} className="bg-emerald-500 h-full" />
+        {/* Progress Bar (Brand Emerald) */}
+        <div className="absolute top-0 left-0 right-0 h-1.5 flex bg-slate-100 dark:bg-slate-800">
+          <motion.div 
+            initial={{ width: 0 }}
+            animate={{ width: `${(step / totalSteps) * 100}%` }} 
+            className="bg-emerald-500 h-full shadow-[0_0_10px_#10b981]" 
+          />
         </div>
 
-        <div className="p-8">
+        <div className="p-8 md:p-10">
+          {step > 1 && step < totalSteps && (
+            <p className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-6">Langkah {step} dari {totalSteps-1}</p>
+          )}
+
           <AnimatePresence mode="wait">
             {step === 1 && (
-              <motion.div key="s1" initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="text-center space-y-6">
-                <div className="w-20 h-20 bg-emerald-500 rounded-3xl flex items-center justify-center mx-auto shadow-xl shadow-emerald-500/20">
-                  <Calculator className="w-10 h-10 text-white" />
+              <motion.div key="s1" initial={{ x: 30, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -30, opacity: 0 }} transition={{ duration: 0.3 }} className="text-center space-y-8 py-4">
+                <div className="w-24 h-24 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-[2rem] flex items-center justify-center mx-auto shadow-2xl shadow-emerald-500/40 rotate-3">
+                  <Calculator className="w-12 h-12 text-white" />
                 </div>
-                <div className="space-y-2">
-                  <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 leading-tight">Hitung HPP & Tentukan Harga Jual dengan Mudah</h2>
-                  <p className="text-sm text-slate-400">Dalam 2 menit, Anda akan tahu harga ideal & target penjualan harian bisnis Anda.</p>
+                <div className="space-y-3">
+                  <h1 className="text-3xl font-black text-slate-800 dark:text-slate-100 leading-tight tracking-tight">Berhenti nebak harga jual.</h1>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed px-4">Dalam 2 menit, Anda akan tahu harga ideal & target penjualan harian bisnis Anda.</p>
                 </div>
-                <button onClick={() => setStep(2)} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-emerald-500/30 transition-all active:scale-95">Mulai Sekarang</button>
+                <button onClick={() => setStep(2)} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black py-5 rounded-[1.5rem] shadow-xl shadow-emerald-500/30 transition-all active:scale-95 text-base tracking-tight">Mulai Hitung Sekarang</button>
               </motion.div>
             )}
 
             {step === 2 && (
-              <motion.div key="s2" initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="space-y-6">
+              <motion.div key="s2" initial={{ x: 30, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -30, opacity: 0 }} transition={{ duration: 0.3 }} className="space-y-8">
                 <div className="space-y-2">
-                  <Badge color="blue">Langkah 1 dari 4</Badge>
-                  <h2 className="text-xl font-black text-slate-800 dark:text-slate-100">Beri Nama Produk Anda</h2>
-                  <p className="text-sm text-slate-400">Ini akan memudahkan Anda mengelola banyak produk sekaligus.</p>
+                  <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Kita mulai dari produk Anda</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Produk apa yang ingin Anda hitung hari ini?</p>
                 </div>
-                <div className="space-y-4">
-                  <Input label="Nama Produk" value={active.name} onChange={e => update('name', e.target.value)} placeholder="Misal: Nasi Goreng Spesial" autofocus />
-                  <Input label="Target Jual (Unit / Bulan)" type="number" value={active.expectedSalesVolume} onChange={e => update('expectedSalesVolume', Number(e.target.value))} suffix="unit" />
+                <div className="space-y-5">
+                  <Input label="Nama Produk" value={active.name} onChange={e => update('name', e.target.value)} placeholder="Contoh: Keripik Pisang, Kaos Polos, dll" autoFocus />
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl">
+                    <Input label="Target Jual (Unit / Bulan)" type="number" value={active.expectedSalesVolume} onChange={e => update('expectedSalesVolume', Number(e.target.value))} suffix="unit" />
+                  </div>
                 </div>
-                <button onClick={() => { if(!active.materials.length) addMaterial(); setStep(3); }} className="w-full bg-slate-800 dark:bg-emerald-500 text-white font-bold py-4 rounded-2xl transition-all active:scale-95">Lanjutkan</button>
+                <button onClick={() => { if(!active.materials.length) addMaterial(); setStep(3); }} className="w-full bg-slate-900 dark:bg-emerald-500 text-white font-bold py-4 rounded-[1.2rem] transition-all active:scale-95">Lanjutkan</button>
               </motion.div>
             )}
 
             {step === 3 && (
-              <motion.div key="s3" initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="space-y-6">
+              <motion.div key="s3" initial={{ x: 30, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -30, opacity: 0 }} transition={{ duration: 0.3 }} className="space-y-8">
                 <div className="space-y-2">
-                  <Badge color="green">Langkah 2 dari 4</Badge>
-                  <h2 className="text-xl font-black text-slate-800 dark:text-slate-100">Tambahkan Bahan Pertama</h2>
-                  <p className="text-sm text-slate-400">Masukkan satu bahan utama untuk melihat cara kalkulasi bekerja.</p>
+                  <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Masukkan bahan utama Anda</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Cukup 1 bahan dulu, nanti bisa ditambah selengkapnya.</p>
                 </div>
-                <div className="space-y-3 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-                  <Input label="Nama Bahan" value={active.materials[0]?.name} onChange={e => updateMat(active.materials[0].id, 'name', e.target.value)} placeholder="Contoh: Beras" />
-                  <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-3 bg-white dark:bg-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none p-5 rounded-[1.5rem] border border-slate-100 dark:border-slate-700">
+                  <Input label="Nama Bahan" value={active.materials[0]?.name} onChange={e => updateMat(active.materials[0].id, 'name', e.target.value)} placeholder="Misal: Kain Cotton Combed" />
+                  <div className="grid grid-cols-2 gap-4">
                     <Input label="Harga Pack (Rp)" type="number" value={active.materials[0]?.packPrice} onChange={e => updateMat(active.materials[0].id, 'packPrice', Number(e.target.value))} />
-                    <Input label="Isi (gr/ml/pcs)" type="number" value={active.materials[0]?.packSize} onChange={e => updateMat(active.materials[0].id, 'packSize', Number(e.target.value))} />
+                    <Input label="Isi Pack" type="number" value={active.materials[0]?.packSize} onChange={e => updateMat(active.materials[0].id, 'packSize', Number(e.target.value))} />
                   </div>
                 </div>
-                <button onClick={() => setStep(4)} className="w-full bg-slate-800 dark:bg-emerald-500 text-white font-bold py-4 rounded-2xl transition-all active:scale-95">Berikutnya</button>
+                <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Semakin detail bahan → semakin akurat</p>
+                </div>
+                <button onClick={() => setStep(4)} className="w-full bg-slate-900 dark:bg-emerald-500 text-white font-bold py-4 rounded-[1.2rem] transition-all active:scale-95">Berikutnya</button>
               </motion.div>
             )}
 
             {step === 4 && (
-              <motion.div key="s4" initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="space-y-6 text-center">
-                <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto text-blue-500">
-                  <DollarSign className="w-8 h-8" />
+              <motion.div key="s4" initial={{ x: 30, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -30, opacity: 0 }} transition={{ duration: 0.3 }} className="space-y-8 text-center py-4">
+                <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/20 rounded-[1.5rem] flex items-center justify-center mx-auto text-blue-500 border border-blue-100 dark:border-blue-800">
+                  <DollarSign className="w-10 h-10" />
                 </div>
                 <div className="space-y-2">
-                  <h2 className="text-xl font-black text-slate-800 dark:text-slate-100">Ada Biaya Tetap?</h2>
-                  <p className="text-sm text-slate-400">Tambahkan biaya seperti listrik atau gaji agar BEP (Balik Modal) lebih akurat.</p>
+                  <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Tambahkan biaya operasional (opsional)</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 px-4">Gaji karyawan, sewa tempat, atau biaya listrik bulanan Anda.</p>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <button onClick={() => { addCost(); setStep(5); }} className="bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-300">Tambah Biaya</button>
-                  <button onClick={() => setStep(5)} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl text-xs font-bold text-slate-400">Lewati Dulu</button>
+                <div className="flex flex-col gap-3">
+                  <button onClick={() => { addCost(); setStep(5); }} className="w-full bg-slate-900 dark:bg-emerald-500 text-white font-bold py-4 rounded-[1.2rem] flex items-center justify-center gap-2">
+                     <Plus className="w-4 h-4" /> Tambah Biaya
+                  </button>
+                  <button onClick={() => setStep(5)} className="w-full text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 py-2">Lewati dulu (bisa diisi nanti)</button>
                 </div>
               </motion.div>
             )}
 
             {step === 5 && (
-              <motion.div key="s5" initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="space-y-6">
+              <motion.div key="s5" initial={{ x: 30, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -30, opacity: 0 }} transition={{ duration: 0.3 }} className="space-y-8">
                 <div className="space-y-2">
-                  <Badge color="red">Langkah Terakhir</Badge>
-                  <h2 className="text-xl font-black text-slate-800 dark:text-slate-100">Berapa Margin Untung?</h2>
-                  <p className="text-sm text-slate-400">Pilih strategi harga yang sesuai dengan target pasar Anda.</p>
+                  <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Tentukan keuntungan Anda</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Pilih strategi yang paling cocok dengan target pasar Anda.</p>
                 </div>
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-3">
                   {[
-                    { l: 'Kompetitif', v: 25, d: 'Pasar massal' },
-                    { l: 'Standar', v: 40, d: 'Sangat disarankan' },
-                    { l: 'Premium', v: 65, d: 'Eksklusif' }
+                    { l: 'Kompetitif', v: 25, d: 'Cepat laku (Pasar masal)' },
+                    { l: 'Standar', v: 40, d: 'Seimbang (Rekomendasi)' },
+                    { l: 'Premium', v: 65, d: 'Margin tinggi (Eksklusif)' }
                   ].map(p => (
-                    <button key={p.v} onClick={() => { update('targetMargin', p.v); setStep(6); }} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${active.targetMargin === p.v ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50' : 'border-slate-200 dark:border-slate-800'}`}>
+                    <button key={p.v} onClick={() => { update('targetMargin', p.v); setStep(6); }} className={`flex items-center justify-between p-5 rounded-[1.5rem] border-2 transition-all ${active.targetMargin === p.v ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50 scale-[1.02] shadow-lg shadow-emerald-500/10' : 'border-slate-100 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}`}>
                       <div className="text-left leading-tight">
-                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{p.l}</p>
-                        <p className="text-[10px] text-slate-400">{p.d}</p>
+                        <p className="text-sm font-black text-slate-800 dark:text-slate-100">{p.l}</p>
+                        <p className="text-[10px] font-bold text-slate-400 mt-0.5 uppercase tracking-wider">{p.d}</p>
                       </div>
-                      <p className="font-black text-emerald-600">{p.v}%</p>
+                      <p className="text-xl font-black text-emerald-600">{p.v}%</p>
                     </button>
                   ))}
                 </div>
@@ -271,31 +282,34 @@ const OnboardingWizard = ({ step, setStep, active, update, addMaterial, updateMa
             )}
 
             {step === 6 && (
-              <motion.div key="s6" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center space-y-6">
-                <div className="w-16 h-16 bg-amber-100 dark:bg-amber-950/50 rounded-full flex items-center justify-center mx-auto text-amber-500 mb-2">
-                  <Zap className="w-8 h-8 fill-current" />
+              <motion.div key="s6" initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.1 }} className="text-center space-y-8 py-2">
+                <div className="relative">
+                   <div className="absolute inset-0 bg-amber-400 blur-2xl opacity-20 animate-pulse" />
+                   <div className="w-20 h-20 bg-amber-100 dark:bg-amber-950/50 rounded-full flex items-center justify-center mx-auto text-amber-500 relative z-10">
+                     <Zap className="w-10 h-10 fill-current" />
+                   </div>
                 </div>
                 <div className="space-y-2">
-                  <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 italic">AHA MOMENT! 🎉</h2>
-                  <p className="text-sm text-slate-400 leading-relaxed">Analisis telah selesai. Inilah angka rahasia bisnis Anda:</p>
+                  <h2 className="text-4xl font-black text-slate-800 dark:text-slate-100 tracking-tighter italic">🎉 Ini strategi terbaik Anda!</h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed px-6">Dengan strategi ini, Anda bisa menguasai pasar dengan profit maksimal.</p>
                 </div>
-                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-3xl p-6 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Harga Jual</p>
-                        <p className="text-xl font-black text-slate-800 dark:text-slate-100">{fmt(m.sellPrice)}</p>
-                      </div>
-                      <div className="space-y-1">
-                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Laba Harian</p>
-                        <p className="text-xl font-black text-emerald-600">{fmt(m.profitDaily)}</p>
-                      </div>
+                <div className="bg-slate-50 dark:bg-slate-800/80 rounded-[2rem] p-8 shadow-inner space-y-6">
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Harga Jual</p>
+                      <p className="text-2xl font-black text-slate-800 dark:text-slate-100">{fmt(m.sellPrice)}</p>
                     </div>
-                    <div className="h-[1px] bg-slate-200 dark:bg-slate-700 w-1/2 mx-auto" />
-                    <p className="text-xs font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
-                      Sesuai target, Anda akan mengantongi profit bersih <span className="font-bold text-emerald-600">{fmt(m.profitMonthly)}</span> setiap bulannya.
-                    </p>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Laba / Produk</p>
+                      <p className="text-2xl font-black text-emerald-600">{fmt(m.profitUnit)}</p>
+                    </div>
                   </div>
-                <button onClick={onComplete} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-xl shadow-emerald-500/40 transition-all active:scale-95">Siap, Mulai Eksplor!</button>
+                  <div className="h-[1px] bg-slate-200 dark:bg-slate-700 w-full" />
+                  <p className="text-xs font-bold text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Target Aman: <span className="text-slate-800 dark:text-slate-100 px-1.5 py-0.5 bg-slate-200 dark:bg-slate-700 rounded-lg">{m.bepDaily} produk/hari</span> agar bisnis tetap untung & terus bertumbuh.
+                  </p>
+                </div>
+                <button onClick={onComplete} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black py-5 rounded-[1.5rem] shadow-[0_15px_40px_rgba(16,185,129,0.3)] transition-all active:scale-95 text-base">Lihat Dashboard Saya</button>
               </motion.div>
             )}
           </AnimatePresence>
