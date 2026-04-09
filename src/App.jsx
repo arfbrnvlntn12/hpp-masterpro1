@@ -652,24 +652,24 @@ export default function App() {
                     <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
                       <div className="flex items-center justify-between mb-4">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tracking Realisasi Penjualan</p>
-                        <Badge color={active.actualSales >= (active.expectedSalesVolume / 30) ? 'green' : 'amber'}>Live Tracker</Badge>
+                        <Badge color={(active?.actualSales || 0) >= ((active?.expectedSalesVolume || 0) / 30) ? 'green' : 'amber'}>Live Tracker</Badge>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="md:col-span-1">
-                          <Input label="Penjualan Hari Ini" type="number" value={active.actualSales} onChange={e => update('actualSales', Number(e.target.value))} suffix="unit" />
+                          <Input label="Penjualan Hari Ini" type="number" value={active?.actualSales || 0} onChange={e => update('actualSales', Number(e.target.value))} suffix="unit" />
                         </div>
                         <div className="md:col-span-2 flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl p-4 border border-slate-100 dark:border-slate-700/40">
                           <div className="flex-1">
                             <p className="text-[10px] text-slate-400 mb-1 font-bold uppercase tracking-tighter text-left">Status vs Target Harian</p>
                             <div className="flex items-end gap-2 text-left">
-                              <p className={`text-lg font-extrabold ${active.actualSales >= m.bepDaily ? 'text-emerald-500' : 'text-amber-500'} leading-tight`}>
-                                {active.actualSales >= m.bepDaily ? 'Target Terlampaui! 🔥' : `${m.bepDaily - active.actualSales} unit lagi penuhi BEP`}
+                              <p className={`text-lg font-extrabold ${(active?.actualSales || 0) >= m.bepDaily ? 'text-emerald-500' : 'text-amber-500'} leading-tight`}>
+                                {(active?.actualSales || 0) >= m.bepDaily ? 'Target Terlampaui! 🔥' : `${m.bepDaily - (active?.actualSales || 0)} unit lagi penuhi BEP`}
                               </p>
                               <p className="text-[9px] text-slate-400 mt-1 italic">"Hari ini butuh {m.bepDaily} unit untuk titik aman bisnis Anda."</p>
                             </div>
                           </div>
                           <div className="w-full sm:w-24 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                             <div className="h-full bg-emerald-500 transition-all duration-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" style={{ width: `${Math.min(100, (active.actualSales / Math.max(1, m.bepDaily)) * 100)}%` }} />
+                             <div className="h-full bg-emerald-500 transition-all duration-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" style={{ width: `${Math.min(100, ((active?.actualSales || 0) / Math.max(1, m.bepDaily)) * 100)}%` }} />
                           </div>
                         </div>
                       </div>
@@ -715,7 +715,7 @@ export default function App() {
                     <div className="grid grid-cols-2 gap-3">
                       <Stat label="BEP Harian" value={`${m.bepDaily} unit/hari`} sub="Titik balik modal" small tip="Jumlah minimum produk yang HARUS terjual setiap hari agar bisnis Anda tidak rugi (impas)." />
                       <Stat label="ROI Tahunan" value={`${m.roiYearly}%`} sub="Return on Investment" small tip="Persentase keuntungan tahunan dibanding modal yang Anda putar. Semakin tinggi, semakin cepat modal kembali." />
-                      <Stat label="Gap Laba" value={fmtShort((active.actualSales * 30 - active.expectedSalesVolume) * m.profitUnit)} sub="vs Target" small color={ (active.actualSales * 30) >= active.expectedSalesVolume ? 'green' : 'amber'} tip="Selisih antara realisasi penjualan Anda (proyeksi 30 hari) dibandingkan dengan target bulanan yang Anda rencanakan." />
+                      <Stat label="Gap Laba" value={fmtShort(((active?.actualSales || 0) * 30 - (active?.expectedSalesVolume || 0)) * m.profitUnit)} sub="vs Target" small color={ ((active?.actualSales || 0) * 30) >= (active?.expectedSalesVolume || 0) ? 'green' : 'amber'} tip="Selisih antara realisasi penjualan Anda (proyeksi 30 hari) dibandingkan dengan target bulanan yang Anda rencanakan." />
                     </div>
 
                     {/* Health check */}
