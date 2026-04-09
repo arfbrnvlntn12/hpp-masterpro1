@@ -582,6 +582,24 @@ export default function App() {
                         </div>
                       </div>
                     )}
+                    {/* Panduan Edukasi - Bantuan Cepat */}
+                    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded-2xl p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <AlertCircle className="w-4 h-4 text-blue-500" />
+                        <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest">Panduan Cepat Pengisian</p>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-bold text-slate-700 dark:text-slate-200">1. Bahan Baku (Dapur/Produksi)</p>
+                          <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-relaxed">Masukkan harga beli satu kemasan (misal: 1 krat telur), besar kemasan (misal: 1000gr), dan jumlah yang dipakai (misal: 100gr).</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-bold text-slate-700 dark:text-slate-200">2. Biaya Operasional (Tetap)</p>
+                          <p className="text-[9px] text-slate-500 dark:text-slate-400 leading-relaxed">Masukkan biaya yang harus bayar tiap bulan, laku atau tida laku (misal: Gaji, Listrik, Sewa). Ini kunci hitungan BEP.</p>
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Smart Recommendation Engine - Direct Decision */}
                     <div className="bg-emerald-600 dark:bg-emerald-500 rounded-2xl p-6 shadow-xl shadow-emerald-500/20 text-white overflow-hidden relative">
                       <Zap className="absolute -right-8 -bottom-8 w-32 h-32 text-white/10 rotate-12" />
