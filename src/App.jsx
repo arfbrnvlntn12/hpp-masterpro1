@@ -21,7 +21,7 @@ const fmtShort = (v) => {
 const calcMetrics = (p) => {
   if (!p) return { 
     matTotal: 0, fixedTotal: 0, hppUnit: 0, sellPrice: 0, profitUnit: 0, 
-    profitMonthly: 0, profitAnnual: 0, margin: 0, bepDaily: 0, roi: 0, roiYearly: 0, 
+    profitMonthly: 0, profitDaily: 0, profitAnnual: 0, margin: 0, bepDaily: 0, roi: 0, roiYearly: 0, 
     paybackDays: 0, unitsToGoal: [], risk: { level: 'N/A', score: 0, advice: '' },
     recommendation: { price: 0, target: 0, margin: 0 },
     insights: [] 
@@ -82,6 +82,7 @@ const calcMetrics = (p) => {
     sellPrice: Math.round(sellPrice),
     profitUnit: Math.round(profitUnit),
     profitMonthly: Math.round(profitUnit * vol),
+    profitDaily: Math.round((profitUnit * vol) / 30),
     profitAnnual: Math.round(profitUnit * vol * 12),
     margin: sellPrice > 0 ? Math.round((profitUnit / sellPrice) * 100) : 0,
     bepDaily: bep,
@@ -278,16 +279,22 @@ const OnboardingWizard = ({ step, setStep, active, update, addMaterial, updateMa
                   <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 italic">AHA MOMENT! 🎉</h2>
                   <p className="text-sm text-slate-400 leading-relaxed">Analisis telah selesai. Inilah angka rahasia bisnis Anda:</p>
                 </div>
-                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-3xl p-6 space-y-4">
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Harga Jual Ideal</p>
-                    <p className="text-3xl font-black text-emerald-600">{fmt(m.sellPrice)}</p>
+                  <div className="bg-slate-50 dark:bg-slate-800/50 rounded-3xl p-6 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Harga Jual</p>
+                        <p className="text-xl font-black text-slate-800 dark:text-slate-100">{fmt(m.sellPrice)}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Laba Harian</p>
+                        <p className="text-xl font-black text-emerald-600">{fmt(m.profitDaily)}</p>
+                      </div>
+                    </div>
+                    <div className="h-[1px] bg-slate-200 dark:bg-slate-700 w-1/2 mx-auto" />
+                    <p className="text-xs font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
+                      Sesuai target, Anda akan mengantongi profit bersih <span className="font-bold text-emerald-600">{fmt(m.profitMonthly)}</span> setiap bulannya.
+                    </p>
                   </div>
-                  <div className="h-[1px] bg-slate-200 dark:bg-slate-700 w-1/2 mx-auto" />
-                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
-                    Agar untung, Anda perlu menjual <span className="font-bold text-slate-800 dark:text-slate-100">{m.bepDaily} unit/hari</span> untuk mencapai target.
-                  </p>
-                </div>
                 <button onClick={onComplete} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-xl shadow-emerald-500/40 transition-all active:scale-95">Siap, Mulai Eksplor!</button>
               </motion.div>
             )}
@@ -933,6 +940,7 @@ export default function App() {
                       <Stat label="Harga Jual" value={fmtShort(m.sellPrice)} sub="Rekomendasi" tip="Harga jual ideal agar target keuntungan Anda tercapai setelah dipotong biaya admin marketplace." />
                       <Stat label="Laba per Unit" value={fmtShort(m.profitUnit)} sub={`Margin ${m.margin}%`} tip="Keuntungan bersih yang Anda dapatkan dari setiap 1 unit produk yang terjual." />
                       <Stat label="Laba Bulanan" value={fmtShort(m.profitMonthly)} sub={`${active?.expectedSalesVolume} unit/bln`} tip="Estimasi total keuntungan bersih dalam sebulan berdasarkan target volume penjualan Anda." />
+                      <Stat label="Laba Harian" value={fmtShort(m.profitDaily)} sub="Estimasi per hari" color="emerald" tip="Rata-rata keuntungan bersih yang Anda dapatkan setiap hari jika target bulanan tercapai." />
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
