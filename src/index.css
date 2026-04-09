@@ -31,35 +31,34 @@
 }
 
 @media print {
-  @page { margin: 1cm; size: auto; }
+  @page { margin: 16mm; size: A4; }
   
-  /* 1. Isolation: Hide EVERYTHING except the report */
-  body * { visibility: hidden; }
-  #print-area, #print-area * { visibility: visible; }
+  /* 1. Reset Total */
+  body * { display: none !important; }
   
-  /* 2. Positioning: Bring the report to absolute zero */
-  #print-area {
+  /* 2. Enable ONLY the print-root clone */
+  #print-root, #print-root * { 
+    display: block !important; 
+    visibility: visible !important;
+    position: static !important;
+    overflow: visible !important; 
+    height: auto !important;
+    min-height: auto !important;
+    transform: none !important;
+  }
+  
+  #print-root {
     position: absolute !important;
     top: 0 !important;
     left: 0 !important;
     width: 100% !important;
     background: white !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 0 !important;
   }
 
-  /* 3. Global Print Clean Up */
-  body { background: white !important; color: black !important; -webkit-print-color-adjust: exact; }
-  * { 
-    transform: none !important; 
-    transition: none !important; 
-    animation: none !important; 
-    box-shadow: none !important; 
-  }
+  body { background: white !important; }
   
   /* Prevent weird page breaks */
   h1, h2, h3, p { orphans: 3; widows: 3; page-break-after: avoid; }
-  .grid { display: block !important; } /* Collapse grid for simple printing if needed */
-  .grid > div { margin-bottom: 1rem; page-break-inside: avoid; }
+  .grid { display: block !important; }
+  .grid > div { margin-bottom: 1.5rem; page-break-inside: avoid; }
 }

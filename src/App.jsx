@@ -313,6 +313,21 @@ export default function App() {
     setActiveId(p.id);
   };
 
+  const handlePrint = () => {
+    const content = document.getElementById("print-area").innerHTML;
+    const printRoot = document.getElementById("print-root");
+    if (!printRoot) return window.print();
+    
+    // Copy computed styles for better accuracy in dark mode
+    const isDarkNow = document.documentElement.classList.contains('dark');
+    printRoot.className = isDarkNow ? 'dark' : '';
+    printRoot.innerHTML = `<div class="p-8 bg-white text-black min-h-screen">${content}</div>`;
+    
+    window.print();
+    
+    printRoot.innerHTML = "";
+  };
+
 
 
   if (!isLoggedIn) return <LoginPage onLogin={() => setIsLoggedIn(true)} isDark={isDark} toggleDark={() => setIsDark(d => !d)} />;
@@ -1099,7 +1114,7 @@ export default function App() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 no-print">
-                      <button onClick={() => window.print()} className="flex items-center justify-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                      <button onClick={handlePrint} className="flex items-center justify-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                         <Printer className="w-4 h-4" /> Cetak / PDF
                       </button>
                       <button onClick={() => {
