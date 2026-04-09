@@ -91,7 +91,14 @@ const calcMetrics = (p) => {
       price: suggestedPrice,
       target: suggestedTarget,
       margin: recommendedMargin
-    }
+    },
+    // New: Aggressive Insights
+    insights: [
+      riskScore > 0.65 ? { type: 'danger', text: `Ketergantungan bahan baku Anda kritis (${Math.round(riskScore * 100)}%). Jika harga pasar naik sedikit, Anda rugi!` } : null,
+      margin < 20 ? { type: 'warning', text: "Margin tipis! Anda kerja keras tapi untung sedikit. Pertimbangkan naikkan harga." } : null,
+      (vol * profitUnit) < fixedTotal ? { type: 'danger', text: "Target penjualan Anda belum menutupi biaya operasional bulanan." } : null,
+      roiYearly > 150 ? { type: 'success', text: "Bisnis ini 'Mesin Cetak Uang'. Fokus pada penetrasi pasar!" } : null
+    ].filter(Boolean)
   };
 };
 
@@ -216,7 +223,9 @@ export default function App() {
     actualSales: 0,
     materials: [],
     fixedCosts: [],
-    snapshots: [], // Store pricing history
+    snapshots: [],
+    streak: 3, // Simulated streak for "wow" factor
+    lastTrackedDate: new Date().toDateString()
   });
 
   useEffect(() => {
@@ -568,18 +577,28 @@ export default function App() {
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
                           <div className="space-y-4">
-                            <div>
-                              <p className="text-[10px] text-emerald-100 opacity-80 mb-1 leading-none">Harga Jual Optimal</p>
-                              <p className="text-3xl font-black tracking-tight">{fmt(m.recommendation.price)}</p>
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <p className="text-[10px] text-emerald-100 opacity-80 mb-1 leading-none">Harga Jual Optimal</p>
+                                <p className="text-3xl font-black tracking-tight">{fmt(m.recommendation.price)}</p>
+                              </div>
+                              {/* Progress Streak Hook */}
+                              <div className="bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full flex items-center gap-1.5 border border-white/20">
+                                <span className="text-lg">🔥</span> 
+                                <div className="text-left">
+                                  <p className="text-[8px] font-bold uppercase leading-none opacity-80">Streak</p>
+                                  <p className="text-xs font-black leading-none">{active?.streak || 0} Hari</p>
+                                </div>
+                              </div>
                             </div>
                             <div className="flex items-center gap-4 border-t border-white/10 pt-4">
                               <div>
-                                <p className="text-[9px] text-emerald-100 opacity-70 mb-0.5">Target Penjualan</p>
-                                <p className="text-base font-bold text-white leading-none">{m.bepDaily} <span className="text-[10px] font-medium opacity-80">unit/hari</span></p>
+                                <p className="text-[9px] text-emerald-100 opacity-70 mb-0.5">Target Harian</p>
+                                <p className="text-base font-bold text-white leading-none">{m.bepDaily} <span className="text-[10px] font-medium opacity-80">unit</span></p>
                               </div>
                               <div className="w-[1px] h-8 bg-white/10" />
                               <div>
-                                <p className="text-[9px] text-emerald-100 opacity-70 mb-0.5">Balik Modal</p>
+                                <p className="text-[9px] text-emerald-100 opacity-70 mb-0.5">Waktu Balik Modal</p>
                                 <p className="text-base font-bold text-white leading-none">{m.paybackDays} <span className="text-[10px] font-medium opacity-80">Hari</span></p>
                               </div>
                             </div>
@@ -644,8 +663,9 @@ export default function App() {
                             <p className="text-[10px] text-slate-400 mb-1 font-bold uppercase tracking-tighter text-left">Status vs Target Harian</p>
                             <div className="flex items-end gap-2 text-left">
                               <p className={`text-lg font-extrabold ${active.actualSales >= m.bepDaily ? 'text-emerald-500' : 'text-amber-500'} leading-tight`}>
-                                {active.actualSales >= m.bepDaily ? 'Target Terlampaui!' : `${m.bepDaily - active.actualSales} unit lagi penuhi BEP`}
+                                {active.actualSales >= m.bepDaily ? 'Target Terlampaui! 🔥' : `${m.bepDaily - active.actualSales} unit lagi penuhi BEP`}
                               </p>
+                              <p className="text-[9px] text-slate-400 mt-1 italic">"Hari ini butuh {m.bepDaily} unit untuk titik aman bisnis Anda."</p>
                             </div>
                           </div>
                           <div className="w-full sm:w-24 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
@@ -655,17 +675,34 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* Educational Insight Card */}
-                    <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded-2xl p-4 flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
-                        <Zap className="w-4 h-4 text-blue-500" />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-1">Edu-Insight</p>
-                        <p className="text-xs text-blue-800 dark:text-blue-200 leading-relaxed italic">
-                          {m.margin < 30 ? "Margin Anda di bawah 30%. Untuk UMKM makanan/minuman, idealnya di angka 40-50% agar aman dari biaya operasional." : "ROI Tahunan Anda di atas 100%. Ini menandakan bisnis yang sangat efisien dalam memutar modal!"}
-                        </p>
-                      </div>
+                    {/* Aggressive Insights Section */}
+                    <div className="space-y-3">
+                      {m.insights.map((insight, idx) => (
+                        <motion.div 
+                          initial={{ opacity: 0, x: -10 }} 
+                          animate={{ opacity: 1, x: 0 }} 
+                          transition={{ delay: idx * 0.1 }}
+                          key={idx} 
+                          className={`p-4 rounded-2xl border flex items-start gap-3 ${
+                          insight.type === 'danger' ? 'bg-red-50 dark:bg-red-950/20 border-red-100 dark:border-red-900/40 text-red-800 dark:text-red-200' :
+                          insight.type === 'warning' ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/40 text-amber-800 dark:text-amber-200' :
+                          'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-200'
+                        }`}>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                            insight.type === 'danger' ? 'bg-red-500/20 text-red-500' :
+                            insight.type === 'warning' ? 'bg-amber-500/20 text-amber-500' :
+                            'bg-emerald-500/20 text-emerald-500'
+                          }`}>
+                            {insight.type === 'danger' ? <AlertCircle className="w-4 h-4" /> : insight.type === 'warning' ? <Zap className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase font-black tracking-widest opacity-60 mb-1">
+                              {insight.type === 'danger' ? 'Kritikal' : insight.type === 'warning' ? 'Peringatan' : 'Peluang'}
+                            </p>
+                            <p className="text-xs font-semibold leading-relaxed">{insight.text}</p>
+                          </div>
+                        </motion.div>
+                      ))}
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
@@ -678,6 +715,7 @@ export default function App() {
                     <div className="grid grid-cols-2 gap-3">
                       <Stat label="BEP Harian" value={`${m.bepDaily} unit/hari`} sub="Titik balik modal" small tip="Jumlah minimum produk yang HARUS terjual setiap hari agar bisnis Anda tidak rugi (impas)." />
                       <Stat label="ROI Tahunan" value={`${m.roiYearly}%`} sub="Return on Investment" small tip="Persentase keuntungan tahunan dibanding modal yang Anda putar. Semakin tinggi, semakin cepat modal kembali." />
+                      <Stat label="Gap Laba" value={fmtShort((active.actualSales * 30 - active.expectedSalesVolume) * m.profitUnit)} sub="vs Target" small color={ (active.actualSales * 30) >= active.expectedSalesVolume ? 'green' : 'amber'} tip="Selisih antara realisasi penjualan Anda (proyeksi 30 hari) dibandingkan dengan target bulanan yang Anda rencanakan." />
                     </div>
 
                     {/* Health check */}
