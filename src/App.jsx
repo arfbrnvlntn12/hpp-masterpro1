@@ -212,6 +212,7 @@ export default function App() {
   const [activeId, setActiveId] = useState(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [businessProfile, setBusinessProfile] = useState({ name: 'Usaha Saya', owner: 'Owner' });
+  const [showSavedMsg, setShowSavedMsg] = useState(false);
 
   const API = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5000/api' : '/api');
 
@@ -276,6 +277,8 @@ export default function App() {
       
       setLastSaved(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
       setIsSaving(false);
+      setShowSavedMsg(true);
+      setTimeout(() => setShowSavedMsg(false), 2000);
     }, 1500);
 
     return () => clearTimeout(timer);
@@ -370,7 +373,7 @@ export default function App() {
                 const metrics = calcMetrics(p);
                 return (
                   <button key={p.id} onClick={() => setActiveId(p.id)}
-                    className={`w-full flex flex-col items-start px-3 py-2.5 rounded-xl text-xs font-medium transition-all group border ${p.id === activeId ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800' : 'text-slate-600 dark:text-slate-400 border-transparent hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+                    className={`w-full flex flex-col items-start px-3 py-2.5 rounded-xl text-xs font-medium transition-all group border ${p.id === activeId ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800' : 'text-slate-600 dark:text-slate-400 border-transparent hover:bg-white dark:hover:bg-slate-800 hover:shadow-md hover:-translate-y-0.5'}`}>
                     <div className="flex items-center justify-between w-full mb-1">
                       <span className="truncate max-w-[100px] font-bold">{p.name}</span>
                       {products.length > 1 && (
@@ -392,13 +395,25 @@ export default function App() {
 
           {/* Nav */}
           <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto no-scrollbar">
-            {NAV.map(({ id, label, icon: Icon }) => (
-              <button key={id} onClick={() => setActiveTab(id)}
-                className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-xs font-medium transition-colors ${activeTab === id ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-slate-700 dark:hover:text-slate-300'}`}>
-                <Icon className="w-3.5 h-3.5 shrink-0" />
-                {label}
-              </button>
-            ))}
+            {NAV.map(({ id, label, icon: Icon }) => {
+              const isEmpty = id === 'materials' ? active?.materials?.length === 0 :
+                              id === 'costs' ? active?.fixedCosts?.length === 0 :
+                              id === 'strategy' ? !active?.targetMargin : false;
+              
+              return (
+                <button
+                  key={id}
+                  onClick={() => setActiveTab(id)}
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl text-xs font-bold transition-all relative ${activeTab === id ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60'}`}
+                >
+                  <Icon className={`w-3.5 h-3.5 ${activeTab === id ? 'text-emerald-500' : ''}`} />
+                  <span className="flex-1 text-left">{label}</span>
+                  {!['dashboard', 'report'].includes(id) && (
+                    <div className={`w-1.5 h-1.5 rounded-full ${isEmpty ? 'bg-amber-400' : 'bg-emerald-500'}`} />
+                  )}
+                </button>
+              );
+            })}
           </nav>
 
           {/* Footer */}
@@ -447,8 +462,18 @@ export default function App() {
             </div>
             <div className="flex items-center gap-3">
               <div className="flex flex-col items-end">
-                <span className={`text-[9px] font-bold ${isSaving ? 'text-amber-500 animate-pulse' : 'text-emerald-500'} leading-none`}>
-                  {isSaving ? 'Menyimpan...' : 'Sinkron'}
+                <span className={`text-[9px] font-bold ${isSaving ? 'text-amber-500' : 'text-emerald-500'} leading-none flex items-center gap-1`}>
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-2.5 h-2.5 animate-spin" /> Menyimpan...
+                    </>
+                  ) : showSavedMsg ? (
+                    <>
+                      <CheckCircle className="w-2.5 h-2.5" /> Tersimpan
+                    </>
+                  ) : (
+                    'Sinkron'
+                  )}
                 </span>
                 {lastSaved && <span className="text-[7px] text-slate-400 opacity-60 mt-0.5">Pukul {lastSaved}</span>}
               </div>
@@ -483,7 +508,7 @@ export default function App() {
                              {products.map(p => {
                                const metrics = calcMetrics(p);
                                return (
-                                 <button key={p.id} onClick={() => { setActiveId(p.id); setShowMobileMenu(false); }} className={`w-full text-left p-3 rounded-xl transition-all border ${activeId === p.id ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+                                 <button key={p.id} onClick={() => { setActiveId(p.id); setShowMobileMenu(false); }} className={`w-full text-left p-3 rounded-xl transition-all border ${activeId === p.id ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:shadow-sm hover:-translate-y-0.5'}`}>
                                     <p className="text-xs font-bold truncate leading-none mb-1">{p.name}</p>
                                     <p className="text-[9px] opacity-60">Margin {metrics.margin}% · {fmtShort(metrics.sellPrice)}</p>
                                  </button>
@@ -800,20 +825,31 @@ export default function App() {
                 {/* ── MATERIALS ── */}
                 {activeTab === 'materials' && (
                   <motion.div key="mat" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
+                    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 mb-4 shadow-sm">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">Total Biaya Bahan Baku</p>
+                      <h2 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">{fmt(m.matTotal)}</h2>
+                    </div>
+
                     <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Total biaya bahan: <span className="font-semibold text-slate-700 dark:text-slate-200">{fmt(m.matTotal)}</span></p>
-                      </div>
-                      <button onClick={addMaterial} className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 px-3 py-1.5 rounded-lg transition-colors">
-                        <Plus className="w-3.5 h-3.5" /> Tambah Bahan
-                      </button>
+                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1.5">
+                         <Package className="w-3 h-3" /> Bahan Terdaftar
+                       </p>
+                       <button onClick={addMaterial} className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1.5 rounded-xl transition-all active:scale-95">
+                         <Plus className="w-3.5 h-3.5" /> Tambah Bahan
+                       </button>
                     </div>
 
                     {active?.materials?.length === 0 && (
-                      <div className="text-center py-12 text-slate-400">
-                        <Package className="w-8 h-8 mx-auto mb-3 opacity-40" />
-                        <p className="text-sm">Belum ada bahan baku</p>
-                        <p className="text-xs mt-1">Klik "Tambah Bahan" untuk mulai</p>
+                      <div className="bg-slate-50 dark:bg-slate-900/40 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl p-12 text-center">
+                        <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm border border-slate-100 dark:border-slate-700">
+                          <Package className="w-8 h-8 text-slate-300" />
+                        </div>
+                        <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Mulai Perhitungan Anda</h3>
+                        <p className="text-xs text-slate-400 max-w-[200px] mx-auto mb-6 leading-relaxed">Masukkan bahan pertama Anda untuk melihat kalkulasi HPP secara otomatis.</p>
+                        <button onClick={addMaterial} className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-2xl text-xs font-bold shadow-lg shadow-emerald-500/30 transition-all active:scale-95 flex items-center gap-2 mx-auto">
+                           <Plus className="w-4 h-4" /> Tambah Bahan Pertama
+                        </button>
+                        <p className="text-[10px] text-slate-400 mt-4 italic">Semakin detail bahan, semakin akurat HPP Anda</p>
                       </div>
                     )}
 
@@ -847,11 +883,18 @@ export default function App() {
                 {/* ── FIXED COSTS ── */}
                 {activeTab === 'costs' && (
                   <motion.div key="costs" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Total aktif: <span className="font-semibold text-slate-700 dark:text-slate-200">{fmt(m.fixedTotal)}/bln</span></p>
-                      <button onClick={addCost} className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 px-3 py-1.5 rounded-lg transition-colors">
-                        <Plus className="w-3.5 h-3.5" /> Tambah Biaya
-                      </button>
+                    <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-5 mb-4 shadow-sm">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">Total Biaya Operasional / Bln</p>
+                      <h2 className="text-3xl font-black text-slate-800 dark:text-slate-100 tracking-tight">{fmt(m.fixedTotal)}</h2>
+                    </div>
+
+                    <div className="flex items-center justify-between mb-2">
+                       <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest flex items-center gap-1.5">
+                         <DollarSign className="w-3 h-3" /> Biaya Tetap Aktif
+                       </p>
+                       <button onClick={addCost} className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-1.5 rounded-xl transition-all active:scale-95">
+                         <Plus className="w-3.5 h-3.5" /> Tambah Biaya
+                       </button>
                     </div>
 
                     {/* Volume & Fee */}
@@ -864,10 +907,15 @@ export default function App() {
                     </div>
 
                     {active?.fixedCosts?.length === 0 && (
-                      <div className="text-center py-12 text-slate-400">
-                        <DollarSign className="w-8 h-8 mx-auto mb-3 opacity-40" />
-                        <p className="text-sm">Belum ada biaya tetap</p>
-                        <p className="text-xs mt-1">Contoh: sewa, listrik, gaji, dll.</p>
+                      <div className="bg-slate-50 dark:bg-slate-900/40 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-3xl p-12 text-center">
+                        <div className="w-16 h-16 bg-white dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm border border-slate-100 dark:border-slate-700">
+                          <DollarSign className="w-8 h-8 text-slate-300" />
+                        </div>
+                        <h3 className="text-sm font-bold text-slate-700 dark:text-slate-200 mb-2">Sempurnakan Biaya Tetap</h3>
+                        <p className="text-xs text-slate-400 max-w-[200px] mx-auto mb-6 leading-relaxed">Sewa, listrik, dan gaji karyawan harus tetap Anda bayar setiap bulan.</p>
+                        <button onClick={addCost} className="bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-2xl text-xs font-bold shadow-lg shadow-emerald-500/30 transition-all active:scale-95 flex items-center gap-2 mx-auto">
+                           <Plus className="w-4 h-4" /> Tambah Biaya Pertama
+                        </button>
                       </div>
                     )}
 
@@ -1163,15 +1211,27 @@ export default function App() {
 
           {/* Mobile Bottom Nav */}
           <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-t border-slate-100 dark:border-slate-800 flex z-50 pt-1 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]" style={{ paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))' }}>
-            {NAV.map(({ id, label, icon: Icon }) => (
-              <button key={id} onClick={() => setActiveTab(id)}
-                className={`flex-1 flex flex-col items-center gap-1.5 py-2 px-0.5 transition-all active:scale-[0.85] ${activeTab === id ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
-                <div className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all ${activeTab === id ? 'bg-emerald-50 dark:bg-emerald-950/50 shadow-inner' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
-                  <Icon className={`${activeTab === id ? 'w-5 h-5' : 'w-4 h-4'} transition-all`} />
-                </div>
-                <span className={`text-[9px] font-bold tracking-tight leading-none ${activeTab === id ? 'opacity-100' : 'opacity-60'}`}>{label}</span>
-              </button>
-            ))}
+            {NAV.map(({ id, label, icon: Icon }) => {
+              const isEmpty = id === 'materials' ? active?.materials?.length === 0 :
+                              id === 'costs' ? active?.fixedCosts?.length === 0 :
+                              id === 'strategy' ? !active?.targetMargin : false;
+              
+              return (
+                <button
+                  key={id}
+                  onClick={() => setActiveTab(id)}
+                  className={`flex-1 flex flex-col items-center gap-1.5 py-2 px-0.5 transition-all active:scale-[0.85] ${activeTab === id ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}
+                >
+                  <div className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all relative ${activeTab === id ? 'bg-emerald-50 dark:bg-emerald-950/50 shadow-inner' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
+                    <Icon className={`${activeTab === id ? 'w-5 h-5' : 'w-4 h-4'} transition-all`} />
+                    {!['dashboard', 'report'].includes(id) && (
+                      <div className={`absolute top-2 right-2 w-2 h-2 rounded-full border border-white dark:border-slate-950 ${isEmpty ? 'bg-amber-400' : 'bg-emerald-500'}`} />
+                    )}
+                  </div>
+                  <span className={`text-[9px] font-bold tracking-tight leading-none ${activeTab === id ? 'opacity-100' : 'opacity-60'}`}>{label}</span>
+                </button>
+              );
+            })}
           </nav>
 
         </div>
