@@ -959,20 +959,20 @@ export default function App() {
                           const snap = {
                             id: Date.now(),
                             date: new Date().toLocaleDateString('id-ID'),
-                            margin: active.targetMargin,
+                            margin: active?.targetMargin || 0,
                             price: m.sellPrice,
                             profit: m.profitUnit
                           };
-                          update('snapshots', [snap, ...(active.snapshots || [])]);
+                          update('snapshots', [snap, ...(active?.snapshots || [])]);
                         }} className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-1 rounded-lg transition-transform active:scale-95">
                           Simpan Versi Sekarang
                         </button>
                       </div>
-                      {(!active.snapshots || active.snapshots.length === 0) ? (
+                      {(!active?.snapshots || active.snapshots.length === 0) ? (
                         <p className="text-[10px] text-slate-400 italic">Belum ada riwayat harga yang disimpan.</p>
                       ) : (
                         <div className="space-y-2 max-h-32 overflow-y-auto pr-2 no-scrollbar">
-                          {active.snapshots.map(s => (
+                          {active?.snapshots?.map(s => (
                             <div key={s.id} className="flex items-center justify-between text-[10px] bg-slate-50 dark:bg-slate-900 px-3 py-2 rounded-lg border border-slate-100 dark:border-slate-800">
                               <span className="font-bold text-slate-400">{s.date}</span>
                               <div className="flex items-center gap-3">
@@ -1046,7 +1046,7 @@ export default function App() {
                         <div className="mb-6">
                           <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 border-l-4 border-emerald-500 pl-2">RINCIAN BAHAN BAKU</p>
                           <div className="space-y-2">
-                             {active.materials.map(item => {
+                             {active?.materials?.map(item => {
                                const cost = item.packSize > 0 ? ((item.packPrice / item.packSize) * item.qty) * (1 + item.waste / 100) : 0;
                                return (
                                  <div key={item.id} className="flex justify-between items-center text-xs py-2 border-b border-slate-50 dark:border-slate-800/50">
