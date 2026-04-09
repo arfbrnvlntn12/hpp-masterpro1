@@ -177,6 +177,8 @@ export default function App() {
 
   const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+  const [lastSaved, setLastSaved] = useState(null);
+
   const defaultProduct = (n = 1) => ({
     id: 'p-' + Date.now(),
     name: `Produk ${n}`,
@@ -197,14 +199,49 @@ export default function App() {
         const res = await axios.get(`${API}/products`);
         if (res.data?.length) { setProducts(res.data); setActiveId(res.data[0].id); return; }
       } catch {}
-      const stored = localStorage.getItem('hpp_v2');
-      if (stored) { const p = JSON.parse(stored); setProducts(p); setActiveId(p[0].id); return; }
+      try {
+        const stored = localStorage.getItem('hpp_v2');
+        if (stored) { 
+          const p = JSON.parse(stored); 
+          if (Array.isArray(p)) { setProducts(p); setActiveId(p[0].id); return; }
+        }
+      } catch (e) { localStorage.removeItem('hpp_v2'); }
       const init = defaultProduct(1);
       setProducts([init]);
       setActiveId(init.id);
     };
     load();
   }, []);
+
+  // Hybrid Auto-Save System
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      if (products.length === 0) return;
+      setIsSaving(true);
+      
+      // Save to LocalStorage (Instant)
+      localStorage.setItem('hpp_v2', JSON.stringify(products));
+      
+      // Sync to Cloud (Debounced)
+      try {
+        if (active?.id) {
+          await axios.post(`${API}/products/${active.id}`, active);
+        }
+      } catch (err) { console.warn("Cloud sync failed, data saved locally."); }
+      
+      setLastSaved(new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+      setIsSaving(false);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [products, active]);
+
+  const resetData = () => {
+    if (window.confirm('Hapus semua data dan mulai dari awal?')) {
+      localStorage.removeItem('hpp_v2');
+      window.location.reload();
+    }
+  };
 
   const active = useMemo(() => products.find(p => p.id === activeId) || products[0], [products, activeId]);
   const m = useMemo(() => calcMetrics(active), [active]);
@@ -236,12 +273,7 @@ export default function App() {
     setActiveId(p.id);
   };
 
-  const save = async () => {
-    setIsSaving(true);
-    try { await axios.post(`${API}/products/${active.id}`, active); } catch {}
-    localStorage.setItem('hpp_v2', JSON.stringify(products));
-    setTimeout(() => setIsSaving(false), 700);
-  };
+
 
   if (!isLoggedIn) return <LoginPage onLogin={() => setIsLoggedIn(true)} isDark={isDark} toggleDark={() => setIsDark(d => !d)} />;
 
@@ -310,7 +342,10 @@ export default function App() {
               {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
               {isDark ? 'Mode Terang' : 'Mode Gelap'}
             </button>
-            <button onClick={() => setIsLoggedIn(false)} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
+            <button onClick={resetData} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
+              <X className="w-3.5 h-3.5" /> Reset Semua Data
+            </button>
+            <button onClick={() => setIsLoggedIn(false)} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
               <LogOut className="w-3.5 h-3.5" /> Keluar
             </button>
           </div>
@@ -337,12 +372,11 @@ export default function App() {
               </button>
             </div>
             <div className="flex items-center gap-2">
+              <div className="text-[10px] text-right text-slate-400 leading-tight">
+                {isSaving ? 'Menyimpan...' : lastSaved ? `Tersimpan\n${lastSaved}` : 'Belum disimpan'}
+              </div>
               <button onClick={() => setIsDark(d => !d)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
                 {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-              </button>
-              <button onClick={save} className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors">
-                {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
-                Simpan
               </button>
             </div>
           </header>
@@ -358,16 +392,15 @@ export default function App() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                <span className={`w-1.5 h-1.5 rounded-full ${isSaving ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
-                {isSaving ? 'Menyimpan...' : 'Tersimpan'}
+              <div className="text-right">
+                <div className="flex items-center justify-end gap-1.5 text-xs text-slate-400 font-medium">
+                  <span className={`w-1.5 h-1.5 rounded-full ${isSaving ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
+                  {isSaving ? 'Menyimpan perubahan...' : 'Sinkronisasi Otomatis Aktif'}
+                </div>
+                {lastSaved && <p className="text-[10px] text-slate-400 mt-0.5 opacity-60">Terakhir disimpan: {lastSaved}</p>}
               </div>
               <button onClick={duplicateProduct} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors mr-2">
                 <Edit2 className="w-3 h-3" /> Salin
-              </button>
-              <button onClick={save} className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors shadow-lg shadow-emerald-500/10">
-                {isSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                Simpan
               </button>
             </div>
           </header>
