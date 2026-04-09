@@ -158,6 +158,146 @@ const Badge = ({ children, color = 'slate' }) => {
 };
 
 // ─── LOGIN PAGE ───────────────────────────────────────────
+// ─── ONBOARDING WIZARD ──────────────────────────────────────
+const OnboardingWizard = ({ step, setStep, active, update, addMaterial, updateMat, addCost, updateCost, onComplete, isDark }) => {
+  const m = calcMetrics(active);
+  
+  const steps = [
+    { title: 'Selamat Datang', desc: 'Hitung HPP & Tentukan Harga Jual dengan Mudah.' },
+    { title: 'Nama Produk', desc: 'Apa yang sedang Anda bangun hari ini?' },
+    { title: 'Bahan Baku', desc: 'Tambahkan bahan pertama produk Anda.' },
+    { title: 'Biaya Tetap', desc: 'Beban operasional (optional).' },
+    { title: 'Target Profit', desc: 'Berapa margin yang Anda inginkan?' },
+    { title: 'AHA Moment', desc: 'Inilah hasil kalkulasi Anda!' },
+  ];
+
+  return (
+    <div className={`fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/40 backdrop-blur-sm`}>
+      <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800">
+        
+        {/* Progress Bar */}
+        <div className="flex h-1 bg-slate-100 dark:bg-slate-800">
+          <motion.div animate={{ width: `${(step / steps.length) * 100}%` }} className="bg-emerald-500 h-full" />
+        </div>
+
+        <div className="p-8">
+          <AnimatePresence mode="wait">
+            {step === 1 && (
+              <motion.div key="s1" initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="text-center space-y-6">
+                <div className="w-20 h-20 bg-emerald-500 rounded-3xl flex items-center justify-center mx-auto shadow-xl shadow-emerald-500/20">
+                  <Calculator className="w-10 h-10 text-white" />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-xl font-black text-slate-800 dark:text-slate-100 leading-tight">Hitung HPP & Tentukan Harga Jual dengan Mudah</h2>
+                  <p className="text-sm text-slate-400">Dalam 2 menit, Anda akan tahu harga ideal & target penjualan harian bisnis Anda.</p>
+                </div>
+                <button onClick={() => setStep(2)} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-emerald-500/30 transition-all active:scale-95">Mulai Sekarang</button>
+              </motion.div>
+            )}
+
+            {step === 2 && (
+              <motion.div key="s2" initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="space-y-6">
+                <div className="space-y-2">
+                  <Badge color="blue">Langkah 1 dari 4</Badge>
+                  <h2 className="text-xl font-black text-slate-800 dark:text-slate-100">Beri Nama Produk Anda</h2>
+                  <p className="text-sm text-slate-400">Ini akan memudahkan Anda mengelola banyak produk sekaligus.</p>
+                </div>
+                <div className="space-y-4">
+                  <Input label="Nama Produk" value={active.name} onChange={e => update('name', e.target.value)} placeholder="Misal: Nasi Goreng Spesial" autofocus />
+                  <Input label="Target Jual (Unit / Bulan)" type="number" value={active.expectedSalesVolume} onChange={e => update('expectedSalesVolume', Number(e.target.value))} suffix="unit" />
+                </div>
+                <button onClick={() => { if(!active.materials.length) addMaterial(); setStep(3); }} className="w-full bg-slate-800 dark:bg-emerald-500 text-white font-bold py-4 rounded-2xl transition-all active:scale-95">Lanjutkan</button>
+              </motion.div>
+            )}
+
+            {step === 3 && (
+              <motion.div key="s3" initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="space-y-6">
+                <div className="space-y-2">
+                  <Badge color="green">Langkah 2 dari 4</Badge>
+                  <h2 className="text-xl font-black text-slate-800 dark:text-slate-100">Tambahkan Bahan Pertama</h2>
+                  <p className="text-sm text-slate-400">Masukkan satu bahan utama untuk melihat cara kalkulasi bekerja.</p>
+                </div>
+                <div className="space-y-3 bg-slate-50 dark:bg-slate-800/50 p-4 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                  <Input label="Nama Bahan" value={active.materials[0]?.name} onChange={e => updateMat(active.materials[0].id, 'name', e.target.value)} placeholder="Contoh: Beras" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input label="Harga Pack (Rp)" type="number" value={active.materials[0]?.packPrice} onChange={e => updateMat(active.materials[0].id, 'packPrice', Number(e.target.value))} />
+                    <Input label="Isi (gr/ml/pcs)" type="number" value={active.materials[0]?.packSize} onChange={e => updateMat(active.materials[0].id, 'packSize', Number(e.target.value))} />
+                  </div>
+                </div>
+                <button onClick={() => setStep(4)} className="w-full bg-slate-800 dark:bg-emerald-500 text-white font-bold py-4 rounded-2xl transition-all active:scale-95">Berikutnya</button>
+              </motion.div>
+            )}
+
+            {step === 4 && (
+              <motion.div key="s4" initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="space-y-6 text-center">
+                <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto text-blue-500">
+                  <DollarSign className="w-8 h-8" />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-xl font-black text-slate-800 dark:text-slate-100">Ada Biaya Tetap?</h2>
+                  <p className="text-sm text-slate-400">Tambahkan biaya seperti listrik atau gaji agar BEP (Balik Modal) lebih akurat.</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <button onClick={() => { addCost(); setStep(5); }} className="bg-slate-100 dark:bg-slate-800 p-4 rounded-2xl text-xs font-bold text-slate-600 dark:text-slate-300">Tambah Biaya</button>
+                  <button onClick={() => setStep(5)} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl text-xs font-bold text-slate-400">Lewati Dulu</button>
+                </div>
+              </motion.div>
+            )}
+
+            {step === 5 && (
+              <motion.div key="s5" initial={{ x: 20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} exit={{ x: -20, opacity: 0 }} className="space-y-6">
+                <div className="space-y-2">
+                  <Badge color="red">Langkah Terakhir</Badge>
+                  <h2 className="text-xl font-black text-slate-800 dark:text-slate-100">Berapa Margin Untung?</h2>
+                  <p className="text-sm text-slate-400">Pilih strategi harga yang sesuai dengan target pasar Anda.</p>
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  {[
+                    { l: 'Kompetitif', v: 25, d: 'Pasar massal' },
+                    { l: 'Standar', v: 40, d: 'Sangat disarankan' },
+                    { l: 'Premium', v: 65, d: 'Eksklusif' }
+                  ].map(p => (
+                    <button key={p.v} onClick={() => { update('targetMargin', p.v); setStep(6); }} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${active.targetMargin === p.v ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/50' : 'border-slate-200 dark:border-slate-800'}`}>
+                      <div className="text-left leading-tight">
+                        <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{p.l}</p>
+                        <p className="text-[10px] text-slate-400">{p.d}</p>
+                      </div>
+                      <p className="font-black text-emerald-600">{p.v}%</p>
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+
+            {step === 6 && (
+              <motion.div key="s6" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="text-center space-y-6">
+                <div className="w-16 h-16 bg-amber-100 dark:bg-amber-950/50 rounded-full flex items-center justify-center mx-auto text-amber-500 mb-2">
+                  <Zap className="w-8 h-8 fill-current" />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-black text-slate-800 dark:text-slate-100 italic">AHA MOMENT! 🎉</h2>
+                  <p className="text-sm text-slate-400 leading-relaxed">Analisis telah selesai. Inilah angka rahasia bisnis Anda:</p>
+                </div>
+                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-3xl p-6 space-y-4">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Harga Jual Ideal</p>
+                    <p className="text-3xl font-black text-emerald-600">{fmt(m.sellPrice)}</p>
+                  </div>
+                  <div className="h-[1px] bg-slate-200 dark:bg-slate-700 w-1/2 mx-auto" />
+                  <p className="text-xs font-medium text-slate-600 dark:text-slate-300 leading-relaxed">
+                    Agar untung, Anda perlu menjual <span className="font-bold text-slate-800 dark:text-slate-100">{m.bepDaily} unit/hari</span> untuk mencapai target.
+                  </p>
+                </div>
+                <button onClick={onComplete} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-xl shadow-emerald-500/40 transition-all active:scale-95">Siap, Mulai Eksplor!</button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 const LoginPage = ({ onLogin, isDark, toggleDark }) => (
   <div className={`min-h-screen flex items-center justify-center p-6 ${isDark ? 'dark bg-slate-950' : 'bg-slate-50'}`}>
     <div className="w-full max-w-sm">
@@ -213,6 +353,7 @@ export default function App() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [businessProfile, setBusinessProfile] = useState({ name: 'Usaha Saya', owner: 'Owner' });
   const [showSavedMsg, setShowSavedMsg] = useState(false);
+  const [wizardStep, setWizardStep] = useState(null);
 
   const API = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5000/api' : '/api');
 
@@ -249,9 +390,12 @@ export default function App() {
           if (Array.isArray(p)) { setProducts(p); setActiveId(p[0].id); return; }
         }
       } catch (e) { localStorage.removeItem('hpp_v2'); }
+      
+      const isFirst = !localStorage.getItem('hpp_wizard_done');
       const init = defaultProduct(1);
       setProducts([init]);
       setActiveId(init.id);
+      if (isFirst) setWizardStep(1);
     };
     load();
   }, []);
@@ -343,9 +487,27 @@ export default function App() {
     laba: Math.max(0, Math.round(m.profitUnit * u - (u < 100 ? m.fixedTotal * (1 - u / 100) : 0))),
   }));
 
+  if (wizardStep) return (
+    <OnboardingWizard 
+      step={wizardStep} 
+      setStep={setWizardStep} 
+      active={active} 
+      update={update}
+      addMaterial={addMaterial}
+      updateMat={updateMat}
+      addCost={addCost}
+      updateCost={updateCost}
+      onComplete={() => {
+        setWizardStep(null);
+        localStorage.setItem('hpp_wizard_done', 'true');
+        setActiveTab('dashboard');
+      }}
+      isDark={isDark}
+    />
+  );
+
   return (
-    <div className={isDark ? 'dark' : ''}>
-      <div className="flex min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-inter">
+    <div className={`flex h-screen bg-slate-50 dark:bg-slate-950 font-sans selection:bg-emerald-100 dark:selection:bg-emerald-900/40 ${isDark ? 'dark' : ''}`}>
 
         {/* ── SIDEBAR ── */}
         <aside className="hidden md:flex w-56 flex-col bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 shrink-0 sticky top-0 h-screen">
@@ -1234,7 +1396,6 @@ export default function App() {
             })}
           </nav>
 
-        </div>
       </div>
     </div>
   );
