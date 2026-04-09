@@ -28,6 +28,9 @@
   .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
   .scrollbar-thin::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 9px; }
   .dark .scrollbar-thin::-webkit-scrollbar-thumb { background: #1e293b; }
+  .safe-area-pb { padding-bottom: calc(env(safe-area-inset-bottom) + 0.5rem); }
+  .safe-area-pt { padding-top: env(safe-area-inset-top); }
+  * { -webkit-tap-highlight-color: transparent; }
 }
 
 @media print {

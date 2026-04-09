@@ -743,14 +743,14 @@ export default function App() {
                       </p>
                       <div className="space-y-2.5">
                         {[
-                          { label: 'Margin keuntungan', val: m.margin, unit: '%', good: m.margin >= 30, tip: m.margin >= 30 ? 'Sangat kompetitif untuk skala UMKM' : 'Sangat tipis, harga Anda terancam rugi jika ada biaya tak terduga' },
-                          { label: 'Biaya bahan baku', val: m.hppUnit > 0 ? Math.round((m.matTotal / m.hppUnit) * 100) : 0, unit: '% dari HPP', good: true, tip: 'Proporsi modal bahan baku terhadap total biaya produksi' },
+                          { label: 'Margin untung', val: m.margin, unit: '%', good: m.margin >= 30, tip: m.margin >= 30 ? 'Sehat' : 'Tipis' },
+                          { label: 'Modal bahan', val: m.hppUnit > 0 ? Math.round((m.matTotal / m.hppUnit) * 100) : 0, unit: '% HPP', good: true, tip: 'Normal' },
                         ].map(item => (
                           <div key={item.label} className="flex items-center justify-between">
-                            <span className="text-xs text-slate-500 dark:text-slate-400">{item.label}</span>
+                            <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">{item.label}</span>
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">{item.val}{item.unit}</span>
-                              <Badge color={item.good ? 'green' : 'red'}>{item.tip}</Badge>
+                              <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200">{item.val}{item.unit}</span>
+                              <Badge color={item.good ? 'green' : 'amber'}>{item.tip}</Badge>
                             </div>
                           </div>
                         ))}
