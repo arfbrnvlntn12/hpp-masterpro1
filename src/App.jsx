@@ -5,7 +5,7 @@ import {
   Save, FileText, LayoutDashboard, Database, X,
   Loader2, LogOut, Sun, Moon, ChevronDown, Package,
   DollarSign, Percent, ShoppingCart, AlertCircle, CheckCircle,
-  Printer, ToggleLeft, ToggleRight, Edit2, BarChart2, Zap, Copy, Menu
+  Printer, ToggleLeft, ToggleRight, Edit2, BarChart2, Zap, Copy, Menu, ChevronRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
@@ -23,7 +23,8 @@ const calcMetrics = (p) => {
     matTotal: 0, fixedTotal: 0, hppUnit: 0, sellPrice: 0, profitUnit: 0, 
     profitMonthly: 0, profitAnnual: 0, margin: 0, bepDaily: 0, roi: 0, roiYearly: 0, 
     paybackDays: 0, unitsToGoal: [], risk: { level: 'N/A', score: 0, advice: '' },
-    recommendation: { price: 0, target: 0, margin: 0 } 
+    recommendation: { price: 0, target: 0, margin: 0 },
+    insights: [] 
   };
   const margin = Number(p.targetMargin) || 0;
   const fee = Number(p.marketplaceFee) || 0;
