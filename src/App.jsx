@@ -5,7 +5,7 @@ import {
   Save, FileText, LayoutDashboard, Database, X,
   Loader2, LogOut, Sun, Moon, ChevronDown, Package,
   DollarSign, Percent, ShoppingCart, AlertCircle, CheckCircle,
-  Printer, ToggleLeft, ToggleRight, Edit2, BarChart2, Zap, Copy
+  Printer, ToggleLeft, ToggleRight, Edit2, BarChart2, Zap, Copy, Menu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
@@ -174,6 +174,7 @@ export default function App() {
   const [isSaving, setIsSaving] = useState(false);
   const [products, setProducts] = useState([]);
   const [activeId, setActiveId] = useState(null);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -357,29 +358,84 @@ export default function App() {
           {/* Mobile Header */}
           <header className="md:hidden bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-4 py-3 flex items-center justify-between sticky top-0 z-50">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 bg-emerald-500 rounded-md flex items-center justify-center">
-                <Calculator className="w-3.5 h-3.5 text-white" />
+              <button onClick={() => setShowMobileMenu(true)} className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <Menu className="w-5 h-5" />
+              </button>
+              <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-700 mx-1" />
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-tighter leading-none mb-0.5">Produk Aktif</span>
+                <select value={activeId} onChange={e => setActiveId(e.target.value)}
+                  className="bg-transparent text-sm font-bold text-slate-800 dark:text-slate-100 outline-none max-w-[120px] truncate leading-none">
+                  {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
               </div>
-              <select value={activeId} onChange={e => setActiveId(e.target.value)}
-                className="bg-transparent text-sm font-semibold text-slate-800 dark:text-slate-100 outline-none max-w-[110px] truncate">
-                {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-              <button onClick={addProduct} className="w-7 h-7 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all">
-                <Plus className="w-4 h-4" />
-              </button>
-              <button onClick={duplicateProduct} className="w-7 h-7 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-lg flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-all">
-                <Copy className="w-3.5 h-3.5" />
-              </button>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="text-[10px] text-right text-slate-400 leading-tight">
-                {isSaving ? 'Menyimpan...' : lastSaved ? `Tersimpan\n${lastSaved}` : 'Belum disimpan'}
+            <div className="flex items-center gap-3">
+              <div className="flex flex-col items-end">
+                <span className={`text-[9px] font-bold ${isSaving ? 'text-amber-500 animate-pulse' : 'text-emerald-500'} leading-none`}>
+                  {isSaving ? 'Menyimpan...' : 'Sinkron'}
+                </span>
+                {lastSaved && <span className="text-[7px] text-slate-400 opacity-60 mt-0.5">Pukul {lastSaved}</span>}
               </div>
-              <button onClick={() => setIsDark(d => !d)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+              <button onClick={() => setIsDark(d => !d)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
                 {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </button>
             </div>
           </header>
+
+          {/* Mobile Drawer */}
+          <AnimatePresence>
+            {showMobileMenu && (
+              <div className="fixed inset-0 z-[60] md:hidden">
+                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowMobileMenu(false)} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
+                 <motion.aside initial={{ x: '-100%' }} animate={{ x: 0 }} exit={{ x: '-100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="absolute left-0 top-0 bottom-0 w-64 bg-white dark:bg-slate-900 shadow-2xl flex flex-col">
+                    <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                       <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 bg-emerald-500 rounded-lg flex items-center justify-center">
+                            <Calculator className="w-4 h-4 text-white" />
+                          </div>
+                          <span className="font-bold text-sm">Menu HPP</span>
+                       </div>
+                       <button onClick={() => setShowMobileMenu(false)} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                          <X className="w-4 h-4" />
+                       </button>
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                       <div>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 px-2">Daftar Produk</p>
+                          <div className="space-y-1">
+                             {products.map(p => {
+                               const metrics = calcMetrics(p);
+                               return (
+                                 <button key={p.id} onClick={() => { setActiveId(p.id); setShowMobileMenu(false); }} className={`w-full text-left p-3 rounded-xl transition-all border ${activeId === p.id ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400' : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}>
+                                    <p className="text-xs font-bold truncate leading-none mb-1">{p.name}</p>
+                                    <p className="text-[9px] opacity-60">Margin {metrics.margin}% · {fmtShort(metrics.sellPrice)}</p>
+                                 </button>
+                               )
+                             })}
+                          </div>
+                          <button onClick={() => { addProduct(); setShowMobileMenu(false); }} className="w-full flex items-center gap-2 mt-2 p-3 text-xs text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-xl transition-colors">
+                             <Plus className="w-3 h-3" /> Tambah Produk Baru
+                          </button>
+                          <button onClick={() => { duplicateProduct(); setShowMobileMenu(false); }} className="w-full flex items-center gap-2 p-3 text-xs text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors">
+                             <Copy className="w-3 h-3" /> Salin Produk Aktif
+                          </button>
+                       </div>
+                    </div>
+
+                    <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                       <button onClick={() => { resetData(); setShowMobileMenu(false); }} className="w-full flex items-center gap-2.5 p-3 rounded-xl text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" /> Reset Semua Data
+                       </button>
+                       <button onClick={() => setIsLoggedIn(false)} className="w-full flex items-center gap-2.5 p-3 rounded-xl text-xs text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                          <LogOut className="w-3.5 h-3.5" /> Keluar
+                       </button>
+                    </div>
+                 </motion.aside>
+              </div>
+            )}
+          </AnimatePresence>
 
           {/* Desktop Header */}
           <header className="hidden md:flex bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800 px-8 py-4 items-center justify-between">
