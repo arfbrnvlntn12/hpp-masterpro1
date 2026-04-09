@@ -43,10 +43,28 @@ const calcMetrics = (p) => {
   const profitUnit = sellPrice - hppUnit - sellPrice * (fee / 100);
   const bep = profitUnit > 0 ? Math.ceil((fixedTotal / profitUnit) / 30) : 0;
 
-  // Recommendation Engine
-  const recommendedMargin = 40; // Standar UMKM Sehat
+  // Recommendation Engine Refined
+  const recommendedMargin = 40;
   const suggestedPrice = Math.round(hppUnit / (1 - (recommendedMargin / 100) - (fee / 100)));
-  const suggestedTarget = Math.ceil(bep * 1.5); // BEP + 50% buffer keamanan
+  
+  // Specific targets
+  const profitGoals = [5000000, 10000000]; // Target 5jt & 10jt
+  const unitsToGoal = profitGoals.map(goal => ({
+    goal,
+    units: profitUnit > 0 ? Math.ceil(goal / profitUnit) : 0
+  }));
+
+  // Risk Assessment
+  const riskScore = hppUnit > 0 ? (matTotal / hppUnit) : 0; // High matTotal ratio = high sensitivity
+  let riskLevel = 'Rendah';
+  let riskAdvice = 'Bisnis stabil terhadap fluktuasi harga bahan.';
+  if (riskScore > 0.7) {
+    riskLevel = 'Tinggi';
+    riskAdvice = 'Sangat sensitif! Kenaikan harga bahan baku 10% bisa memicu kerugian.';
+  } else if (riskScore > 0.5) {
+    riskLevel = 'Sedang';
+    riskAdvice = 'Cukup terpengaruh kenaikan bahan. Pastikan stok aman.';
+  }
 
   return {
     matTotal: Math.round(matTotal),
@@ -60,7 +78,9 @@ const calcMetrics = (p) => {
     bepDaily: bep,
     roi: hppUnit > 0 ? Math.round((profitUnit / hppUnit) * 100) : 0,
     roiYearly: hppUnit > 0 ? Math.round(((profitUnit * vol * 12) / (matTotal * vol + fixedTotal)) * 100) : 0,
-    paybackMonths: profitUnit > 0 ? Math.ceil((matTotal * vol) / (profitUnit * vol)) : 0,
+    paybackDays: profitUnit > 0 ? Math.ceil((matTotal * vol + fixedTotal) / (profitUnit * (vol/30))) : 0,
+    unitsToGoal,
+    risk: { level: riskLevel, score: Math.round(riskScore * 100), advice: riskAdvice },
     recommendation: {
       price: suggestedPrice,
       target: suggestedTarget,
@@ -135,7 +155,7 @@ const LoginPage = ({ onLogin, isDark, toggleDark }) => (
           </div>
           <div>
             <h1 className="text-base font-bold text-slate-800 dark:text-slate-100">HPP Master</h1>
-            <p className="text-xs text-slate-400">Kalkulator Usaha UMKM</p>
+            <p className="text-xs text-slate-400 font-medium">Asisten Penentu Harga & Profit UMKM</p>
           </div>
         </div>
         <div className="space-y-3 mb-6">
@@ -175,6 +195,7 @@ export default function App() {
   const [products, setProducts] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [businessProfile, setBusinessProfile] = useState({ name: 'Usaha Saya', owner: 'Owner' });
 
   const API = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -186,8 +207,10 @@ export default function App() {
     targetMargin: 40,
     expectedSalesVolume: 100,
     marketplaceFee: 0,
+    actualSales: 0,
     materials: [],
     fixedCosts: [],
+    snapshots: [], // Store pricing history
   });
 
   useEffect(() => {
@@ -291,11 +314,19 @@ export default function App() {
         {/* ── SIDEBAR ── */}
         <aside className="hidden md:flex w-56 flex-col bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 shrink-0 sticky top-0 h-screen">
           {/* Logo */}
-          <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2.5">
-            <div className="w-7 h-7 bg-emerald-500 rounded-lg flex items-center justify-center">
-              <Calculator className="w-4 h-4 text-white" />
+          <div className="p-5 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-2.5 mb-3">
+              <div className="w-7 h-7 bg-emerald-500 rounded-lg flex items-center justify-center">
+                <Calculator className="w-4 h-4 text-white" />
+              </div>
+              <span className="font-bold text-sm text-slate-800 dark:text-slate-100">HPP Master</span>
             </div>
-            <span className="font-bold text-sm text-slate-800 dark:text-slate-100">HPP Master</span>
+            <input 
+              value={businessProfile.name} 
+              onChange={e => setBusinessProfile(p => ({ ...p, name: e.target.value }))}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-transparent focus:border-emerald-500 rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 outline-none transition-colors"
+              placeholder="Nama Usaha"
+            />
           </div>
 
           {/* Product List */}
@@ -345,6 +376,17 @@ export default function App() {
             </button>
             <button onClick={resetData} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
               <X className="w-3.5 h-3.5" /> Reset Semua Data
+            </button>
+            <button onClick={() => {
+              const data = JSON.stringify(products);
+              const blob = new Blob([data], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `hpp_master_backup_${new Date().toISOString().split('T')[0]}.json`;
+              a.click();
+            }} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-slate-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors">
+              <Save className="w-3.5 h-3.5" /> Download Backup
             </button>
             <button onClick={() => setIsLoggedIn(false)} className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
               <LogOut className="w-3.5 h-3.5" /> Keluar
@@ -479,28 +521,144 @@ export default function App() {
                 {/* ── DASHBOARD ── */}
                 {activeTab === 'dashboard' && (
                   <motion.div key="dash" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
-                    {/* Strategic Recommendation - The Decision Maker */}
-                    <div className="bg-emerald-600 dark:bg-emerald-500 rounded-xl p-5 shadow-lg shadow-emerald-500/20 text-white overflow-hidden relative">
-                      <Zap className="absolute -right-4 -bottom-4 w-24 h-24 text-white/10 rotate-12" />
+                    
+                    {/* Portfolio Summary (If multiple products) */}
+                    {products.length > 1 && (
+                      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 overflow-hidden relative group">
+                        <div className="flex items-center justify-between mb-4">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ringkasan Portofolio ({products.length} Produk)</p>
+                          <BarChart2 className="w-4 h-4 text-emerald-500 opacity-50" />
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/30">
+                            <p className="text-[8px] text-slate-400 mb-0.5 uppercase font-bold">Total Laba</p>
+                            <p className="text-sm font-bold text-emerald-600 truncate">{fmtShort(products.reduce((s, p) => s + calcMetrics(p).profitMonthly, 0))}/bln</p>
+                          </div>
+                          <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/30">
+                            <p className="text-[8px] text-slate-400 mb-0.5 uppercase font-bold">Top Produk</p>
+                            <p className="text-sm font-bold text-slate-700 dark:text-slate-200 truncate">
+                              {[...products].sort((a, b) => calcMetrics(b).profitUnit - calcMetrics(a).profitUnit)[0]?.name}
+                            </p>
+                          </div>
+                          <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-700/30">
+                            <p className="text-[8px] text-slate-400 mb-0.5 uppercase font-bold">Rata Margin</p>
+                            <p className="text-sm font-bold text-blue-600">
+                              {Math.round(products.reduce((s, p) => s + calcMetrics(p).margin, 0) / products.length)}%
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    {/* Smart Recommendation Engine - Direct Decision */}
+                    <div className="bg-emerald-600 dark:bg-emerald-500 rounded-2xl p-6 shadow-xl shadow-emerald-500/20 text-white overflow-hidden relative">
+                      <Zap className="absolute -right-8 -bottom-8 w-32 h-32 text-white/10 rotate-12" />
                       <div className="relative z-10">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-100 mb-3 flex items-center gap-1.5">
-                          <CheckCircle className="w-3 h-3" /> Rekomendasi Strategis
-                        </p>
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+                        <div className="flex items-center justify-between mb-5">
+                          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-100 flex items-center gap-1.5">
+                            <Target className="w-3.5 h-3.5 shadow-sm" /> Smart Decision
+                          </p>
+                          <Badge color="green">Saran Ahli</Badge>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+                          <div className="space-y-4">
                             <div>
-                              <p className="text-[10px] text-emerald-100 opacity-80">Harga Jual Ideal</p>
-                              <p className="text-lg font-bold">{fmt(m.recommendation.price)}</p>
+                              <p className="text-[10px] text-emerald-100 opacity-80 mb-1 leading-none">Harga Jual Optimal</p>
+                              <p className="text-3xl font-black tracking-tight">{fmt(m.recommendation.price)}</p>
                             </div>
-                            <div className="text-right">
-                              <p className="text-[10px] text-emerald-100 opacity-80">Target Aman</p>
-                              <p className="text-lg font-bold">{m.recommendation.target} unit/hari</p>
+                            <div className="flex items-center gap-4 border-t border-white/10 pt-4">
+                              <div>
+                                <p className="text-[9px] text-emerald-100 opacity-70 mb-0.5">Target Penjualan</p>
+                                <p className="text-base font-bold text-white leading-none">{m.bepDaily} <span className="text-[10px] font-medium opacity-80">unit/hari</span></p>
+                              </div>
+                              <div className="w-[1px] h-8 bg-white/10" />
+                              <div>
+                                <p className="text-[9px] text-emerald-100 opacity-70 mb-0.5">Balik Modal</p>
+                                <p className="text-base font-bold text-white leading-none">{m.paybackDays} <span className="text-[10px] font-medium opacity-80">Hari</span></p>
+                              </div>
                             </div>
                           </div>
-                          <p className="text-xs text-white/90 leading-relaxed italic">
-                            "Untuk mencapai profit maksimal dengan risiko rendah, gunakan margin <strong>{m.recommendation.margin}%</strong> dan pastikan penjualan harian di atas target aman."
-                          </p>
+                          <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/10">
+                            <p className="text-xs font-semibold mb-2 flex items-center gap-1.5">
+                              <Calculator className="w-3.5 h-3.5" /> Rencana Laba Spesifik
+                            </p>
+                            <div className="space-y-2">
+                              {m.unitsToGoal.map(g => (
+                                <div key={g.goal} className="flex items-center justify-between bg-white/5 rounded-lg px-3 py-2 text-xs">
+                                  <span>Target <span className="font-bold">{fmtShort(g.goal)}</span></span>
+                                  <span className="font-bold">Jual {g.units} unit</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Risk & Health Indicator */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className={`rounded-2xl p-5 border shadow-sm ${m.risk.level === 'Tinggi' ? 'bg-red-50 dark:bg-red-950/30 border-red-100 dark:border-red-900/50' : m.risk.level === 'Sedang' ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-100 dark:border-amber-900/40' : 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/40'}`}>
+                        <div className="flex items-center justify-between mb-3">
+                           <div className="flex items-center gap-2 text-slate-800 dark:text-slate-100 italic">
+                             <AlertCircle className={`w-4 h-4 ${m.risk.level === 'Tinggi' ? 'text-red-500' : m.risk.level === 'Sedang' ? 'text-amber-500' : 'text-emerald-500'}`} />
+                             <span className="text-xs font-bold uppercase tracking-wider">Indikator Risiko</span>
+                           </div>
+                           <Badge color={m.risk.level === 'Tinggi' ? 'red' : m.risk.level === 'Sedang' ? 'amber' : 'green'}>{m.risk.level}</Badge>
+                        </div>
+                        <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-300 font-medium">
+                          {m.risk.advice} <span className="font-bold opacity-80">(Sensitivitas: {m.risk.score}%)</span>
+                        </p>
+                      </div>
+
+                      <div className="bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 rounded-2xl p-5 flex flex-col justify-center">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1">Time to Payback</p>
+                            <p className="text-xl font-black text-slate-800 dark:text-slate-100">{m.paybackDays} Hari <span className="text-[10px] font-normal text-slate-400">Kerja</span></p>
+                          </div>
+                          <div className="w-12 h-12 rounded-full border-4 border-emerald-500/20 border-t-emerald-500 flex items-center justify-center">
+                             <TrendingUp className="w-5 h-5 text-emerald-500" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Tracking Realization vs Prediction */}
+                    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+                      <div className="flex items-center justify-between mb-4">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tracking Realisasi Penjualan</p>
+                        <Badge color={active.actualSales >= (active.expectedSalesVolume / 30) ? 'green' : 'amber'}>Live Tracker</Badge>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="md:col-span-1">
+                          <Input label="Penjualan Hari Ini" type="number" value={active.actualSales} onChange={e => update('actualSales', Number(e.target.value))} suffix="unit" />
+                        </div>
+                        <div className="md:col-span-2 flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl p-4 border border-slate-100 dark:border-slate-700/40">
+                          <div className="flex-1">
+                            <p className="text-[10px] text-slate-400 mb-1 font-bold uppercase tracking-tighter text-left">Status vs Target Harian</p>
+                            <div className="flex items-end gap-2 text-left">
+                              <p className={`text-lg font-extrabold ${active.actualSales >= m.bepDaily ? 'text-emerald-500' : 'text-amber-500'} leading-tight`}>
+                                {active.actualSales >= m.bepDaily ? 'Target Terlampaui!' : `${m.bepDaily - active.actualSales} unit lagi penuhi BEP`}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="w-full sm:w-24 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                             <div className="h-full bg-emerald-500 transition-all duration-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" style={{ width: `${Math.min(100, (active.actualSales / Math.max(1, m.bepDaily)) * 100)}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Educational Insight Card */}
+                    <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/50 rounded-2xl p-4 flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
+                        <Zap className="w-4 h-4 text-blue-500" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-1">Edu-Insight</p>
+                        <p className="text-xs text-blue-800 dark:text-blue-200 leading-relaxed italic">
+                          {m.margin < 30 ? "Margin Anda di bawah 30%. Untuk UMKM makanan/minuman, idealnya di angka 40-50% agar aman dari biaya operasional." : "ROI Tahunan Anda di atas 100%. Ini menandakan bisnis yang sangat efisien dalam memutar modal!"}
+                        </p>
                       </div>
                     </div>
 
@@ -667,17 +825,17 @@ export default function App() {
                     {/* Presets */}
                     <div>
                       <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-3">Pilih Target Margin</p>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {[
                           { label: 'Kompetitif', val: 25, desc: 'Pasar massal' },
                           { label: 'Standar', val: 40, desc: 'Untuk UMKM' },
                           { label: 'Premium', val: 65, desc: 'High-value' },
                         ].map(preset => (
                           <button key={preset.val} onClick={() => update('targetMargin', preset.val)}
-                            className={`p-3 rounded-xl border text-left transition-all active:scale-[0.97] ${active?.targetMargin === preset.val ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/40' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60'}`}>
-                            <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{preset.val}%</p>
-                            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mt-0.5 leading-tight">{preset.label}</p>
-                            <p className="text-[10px] text-slate-400 mt-0.5 leading-tight hidden sm:block">{preset.desc}</p>
+                            className={`p-4 rounded-2xl border text-left transition-all active:scale-[0.97] ${active?.targetMargin === preset.val ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 ring-1 ring-emerald-400' : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/60'}`}>
+                            <p className="text-xl font-black text-slate-800 dark:text-slate-100">{preset.val}%</p>
+                            <p className="text-xs font-bold text-slate-600 dark:text-slate-300 mt-1 leading-tight">{preset.label}</p>
+                            <p className="text-[10px] text-slate-400 mt-1 leading-tight hidden sm:block">{preset.desc}</p>
                           </button>
                         ))}
                       </div>
@@ -726,35 +884,62 @@ export default function App() {
                       </div>
                     </div>
 
-                    {/* What-If Simulation */}
-                    <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
-                       <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5 uppercase tracking-wider">
-                         <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> Simulasi Skenario
+                     {/* What-If & Safe Price Hike Tool */}
+                     <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+                       <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-4 flex items-center gap-1.5 uppercase tracking-wider">
+                         <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> Analisa "Naik Harga Aman"
                        </p>
-                       <div className="space-y-3">
-                         <div className="flex items-center justify-between">
-                            <span className="text-xs text-slate-500">Jika bahan naik 10%...</span>
-                            <span className="text-xs font-semibold text-red-500">Laba turun {fmt((m.matTotal * 0.1) * active?.expectedSalesVolume)}/bln</span>
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                         <div className="space-y-3">
+                           <div className="flex items-center justify-between text-xs">
+                             <span className="text-slate-500">Jika beralih ke Bahan Premium (+15%)</span>
+                             <span className="font-bold text-red-500">-{fmtShort((m.matTotal * 0.15) * active?.expectedSalesVolume)} Laba</span>
+                           </div>
+                           <div className="flex items-center justify-between text-xs">
+                             <span className="text-slate-500">Jika naikkan harga Rp2.000...</span>
+                             <span className="font-bold text-emerald-500">+{fmtShort(2000 * active?.expectedSalesVolume)} Laba/bln</span>
+                           </div>
                          </div>
-                         <div className="flex items-center justify-between">
-                            <span className="text-xs text-slate-500">Jika volume turun 30%...</span>
-                            <span className="text-xs font-semibold text-amber-500">ROI jadi {Math.round(m.roiYearly * 0.7)}%</span>
-                         </div>
-                         <div className="flex items-center justify-between">
-                            <span className="text-xs text-slate-500 text-emerald-600 font-medium">Saran: Minimal jual {m.bepDaily} unit/hari untuk aman.</span>
+                         <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-100 dark:border-slate-700">
+                            <p className="text-[10px] font-bold text-emerald-500 mb-1 leading-none uppercase">Rekomendasi Kenaikan</p>
+                            <p className="text-[11px] text-slate-500 leading-tight">Maksimal harga aman Anda: <span className="font-bold text-slate-800 dark:text-slate-100">{fmt(m.sellPrice * 1.1)}</span> (+10%). Di atas ini, risiko pelanggan pindah sangat tinggi.</p>
                          </div>
                        </div>
-                    </div>
+                     </div>
 
-                    {/* Margin vs. Fee warning */}
-                    {(Number(active?.targetMargin) + Number(active?.marketplaceFee)) >= 90 && (
-                      <div className="flex items-start gap-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
-                        <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                        <p className="text-xs text-amber-700 dark:text-amber-300 font-medium leading-relaxed">
-                          ⚠️ Waduh, harga Anda kemungkinan sulit bersaing. Total margin & fee ({(Number(active?.targetMargin) + Number(active?.marketplaceFee))}%) terlalu tinggi. Pertimbangkan menaikkan efisiensi bahan atau mengurangi margin agar tetap kompetitif.
-                        </p>
+                    {/* Pricing History / Snapshots */}
+                    <div className="bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 rounded-xl p-5">
+                      <div className="flex items-center justify-between mb-4">
+                        <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Riwayat Strategi Harga</p>
+                        <button onClick={() => {
+                          const snap = {
+                            id: Date.now(),
+                            date: new Date().toLocaleDateString('id-ID'),
+                            margin: active.targetMargin,
+                            price: m.sellPrice,
+                            profit: m.profitUnit
+                          };
+                          update('snapshots', [snap, ...(active.snapshots || [])]);
+                        }} className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-1 rounded-lg transition-transform active:scale-95">
+                          Simpan Versi Sekarang
+                        </button>
                       </div>
-                    )}
+                      {(!active.snapshots || active.snapshots.length === 0) ? (
+                        <p className="text-[10px] text-slate-400 italic">Belum ada riwayat harga yang disimpan.</p>
+                      ) : (
+                        <div className="space-y-2 max-h-32 overflow-y-auto pr-2 no-scrollbar">
+                          {active.snapshots.map(s => (
+                            <div key={s.id} className="flex items-center justify-between text-[10px] bg-slate-50 dark:bg-slate-900 px-3 py-2 rounded-lg border border-slate-100 dark:border-slate-800">
+                              <span className="font-bold text-slate-400">{s.date}</span>
+                              <div className="flex items-center gap-3">
+                                <span>{s.margin}% Margin</span>
+                                <span className="font-bold text-slate-700 dark:text-slate-200">{fmtShort(s.price)}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </motion.div>
                 )}
 
@@ -764,7 +949,7 @@ export default function App() {
                     <div className="bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 rounded-xl p-6 print:shadow-none print:border-none" id="print-area">
                       <div className="flex items-start justify-between mb-8 pb-6 border-b-2 border-slate-100 dark:border-slate-700">
                         <div>
-                          <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.2em] mb-1">PROYEKSI BISNIS</p>
+                          <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-[0.2em] mb-1">{businessProfile.name}</p>
                           <h1 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 uppercase tracking-tight">{active?.name || 'Produk Baru'}</h1>
                           <p className="text-[10px] text-slate-400 mt-1">Laporan Analisis HPP & Profitabilitas · {new Date().toLocaleDateString('id-ID', { dateStyle: 'long' })}</p>
                         </div>
@@ -814,52 +999,42 @@ export default function App() {
 
                       {/* Bahan baku breakdown */}
                       {active?.materials?.length > 0 && (
-                        <div className="mb-5">
-                          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">Rincian Bahan Baku</p>
-                          <table className="w-full text-xs">
-                            <thead>
-                              <tr className="text-slate-400 border-b border-slate-100 dark:border-slate-700">
-                                <th className="text-left py-1.5 font-medium">Bahan</th>
-                                <th className="text-right py-1.5 font-medium">Biaya/Unit</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {active.materials.map(item => {
-                                const cost = item.packSize > 0 ? ((item.packPrice / item.packSize) * item.qty) * (1 + item.waste / 100) : 0;
-                                return (
-                                  <tr key={item.id} className="border-b border-slate-50 dark:border-slate-700/50">
-                                    <td className="py-1.5 text-slate-600 dark:text-slate-300">{item.name}</td>
-                                    <td className="py-1.5 text-right font-semibold text-slate-700 dark:text-slate-200">{fmt(cost)}</td>
-                                  </tr>
-                                );
-                              })}
-                              <tr>
-                                <td className="pt-2 font-semibold text-slate-700 dark:text-slate-200">Total</td>
-                                <td className="pt-2 text-right font-bold text-emerald-600 dark:text-emerald-400">{fmt(m.matTotal)}</td>
-                              </tr>
-                            </tbody>
-                          </table>
+                        <div className="mb-6">
+                          <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 border-l-4 border-emerald-500 pl-2">RINCIAN BAHAN BAKU</p>
+                          <div className="space-y-2">
+                             {active.materials.map(item => {
+                               const cost = item.packSize > 0 ? ((item.packPrice / item.packSize) * item.qty) * (1 + item.waste / 100) : 0;
+                               return (
+                                 <div key={item.id} className="flex justify-between items-center text-xs py-2 border-b border-slate-50 dark:border-slate-800/50">
+                                    <span className="text-slate-600 dark:text-slate-400 font-medium">{item.name}</span>
+                                    <span className="font-bold text-slate-800 dark:text-slate-100">{fmt(cost)}</span>
+                                 </div>
+                               );
+                             })}
+                             <div className="flex justify-between items-center text-sm py-3 border-t border-emerald-500/20 mt-2">
+                                <span className="font-bold text-slate-800 dark:text-slate-100">Total HPP Bahan</span>
+                                <span className="font-black text-emerald-600">{fmt(m.matTotal)}</span>
+                             </div>
+                          </div>
                         </div>
                       )}
 
                       {/* Biaya tetap breakdown */}
                       {active?.fixedCosts?.filter(f => f.isActive !== false).length > 0 && (
-                        <div className="mb-5">
-                          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2">Biaya Tetap Aktif</p>
-                          <table className="w-full text-xs">
-                            <tbody>
-                              {active.fixedCosts.filter(f => f.isActive !== false).map(item => (
-                                <tr key={item.id} className="border-b border-slate-50 dark:border-slate-700/50">
-                                  <td className="py-1.5 text-slate-600 dark:text-slate-300">{item.name}</td>
-                                  <td className="py-1.5 text-right font-semibold text-slate-700 dark:text-slate-200">{fmt(item.amount)}/bln</td>
-                                </tr>
-                              ))}
-                              <tr>
-                                <td className="pt-2 font-semibold text-slate-700 dark:text-slate-200">Total per unit</td>
-                                <td className="pt-2 text-right font-bold text-slate-800 dark:text-slate-100">{fmt(m.fixedTotal / Math.max(1, active?.expectedSalesVolume))}</td>
-                              </tr>
-                            </tbody>
-                          </table>
+                        <div className="mb-6">
+                          <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-3 border-l-4 border-slate-400 pl-2 uppercase">Biaya Tetap Aktif</p>
+                          <div className="space-y-2">
+                             {active.fixedCosts.filter(f => f.isActive !== false).map(item => (
+                               <div key={item.id} className="flex justify-between items-center text-xs py-2 border-b border-slate-50 dark:border-slate-800/50">
+                                  <span className="text-slate-600 dark:text-slate-400 font-medium">{item.name}</span>
+                                  <span className="font-bold text-slate-800 dark:text-slate-100">{fmt(item.amount)}/bln</span>
+                               </div>
+                             ))}
+                             <div className="flex justify-between items-center text-[10px] py-3 mt-1 opacity-60">
+                                <span>Porsi Biaya per Unit</span>
+                                <span className="font-bold">{fmt(m.fixedTotal / Math.max(1, active?.expectedSalesVolume))}</span>
+                             </div>
+                          </div>
                         </div>
                       )}
 
@@ -878,9 +1053,27 @@ export default function App() {
                       </div>
                     </div>
 
-                    <button onClick={() => window.print()} className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors no-print">
-                      <Printer className="w-4 h-4" /> Cetak / Simpan PDF
-                    </button>
+                    <div className="grid grid-cols-2 gap-3 no-print">
+                      <button onClick={() => window.print()} className="flex items-center justify-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                        <Printer className="w-4 h-4" /> Cetak / PDF
+                      </button>
+                      <button onClick={() => {
+                        const headers = ["Produk", "HPP", "Harga Jual", "Laba/Unit", "Laba/Bulan", "ROI (%)"];
+                        const rows = products.map(p => {
+                          const met = calcMetrics(p);
+                          return [p.name, met.hppUnit, met.sellPrice, met.profitUnit, met.profitMonthly, met.roiYearly];
+                        });
+                        const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+                        const blob = new Blob([csvContent], { type: 'text/csv' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = `hpp_master_export_${new Date().toISOString().split('T')[0]}.csv`;
+                        a.click();
+                      }} className="flex items-center justify-center gap-2 text-sm font-semibold text-emerald-600 border border-emerald-200 dark:border-emerald-800/50 rounded-xl py-3 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-colors">
+                        <FileText className="w-4 h-4" /> Export CSV
+                      </button>
+                    </div>
                   </motion.div>
                 )}
 
@@ -889,14 +1082,14 @@ export default function App() {
           </main>
 
           {/* Mobile Bottom Nav */}
-          <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex z-50" style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+          <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg border-t border-slate-100 dark:border-slate-800 flex z-50 pt-1 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]" style={{ paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))' }}>
             {NAV.map(({ id, label, icon: Icon }) => (
               <button key={id} onClick={() => setActiveTab(id)}
-                className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 px-0.5 transition-colors ${activeTab === id ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
-                <div className={`w-8 h-8 flex items-center justify-center rounded-xl transition-colors ${activeTab === id ? 'bg-emerald-50 dark:bg-emerald-950/50' : ''}`}>
-                  <Icon className="w-4 h-4" />
+                className={`flex-1 flex flex-col items-center gap-1.5 py-2 px-0.5 transition-all active:scale-[0.85] ${activeTab === id ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                <div className={`w-10 h-10 flex items-center justify-center rounded-2xl transition-all ${activeTab === id ? 'bg-emerald-50 dark:bg-emerald-950/50 shadow-inner' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
+                  <Icon className={`${activeTab === id ? 'w-5 h-5' : 'w-4 h-4'} transition-all`} />
                 </div>
-                <span className="text-[9px] font-semibold leading-none">{label}</span>
+                <span className={`text-[9px] font-bold tracking-tight leading-none ${activeTab === id ? 'opacity-100' : 'opacity-60'}`}>{label}</span>
               </button>
             ))}
           </nav>
