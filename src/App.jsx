@@ -129,10 +129,16 @@ const Input = ({ label, type = 'text', prefix, suffix, ...props }) => (
   </div>
 );
 
-const Stat = ({ label, value, sub, accent = false, small = false, tip = null }) => (
-  <div className={`rounded-xl p-4 border relative group ${accent ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800' : 'bg-white dark:bg-slate-800/60 border-slate-100 dark:border-slate-700/60'}`}>
+const Stat = ({ label, value, sub, accent = false, small = false, tip = null, premium = false, onLockClick }) => (
+  <div className={`rounded-xl p-4 border relative group overflow-hidden ${accent ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800' : 'bg-white dark:bg-slate-800/60 border-slate-100 dark:border-slate-700/60'}`}>
+    {premium && (
+      <div className="absolute inset-0 z-10 bg-white/40 dark:bg-slate-900/40 backdrop-blur-[1px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+        <button onClick={onLockClick} className="bg-slate-900 dark:bg-emerald-500 text-white text-[8px] font-black px-2 py-1 rounded-lg">UPGRADE</button>
+      </div>
+    )}
     <div className="flex items-center gap-1.5 mb-1">
       <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{label}</p>
+      {premium && <Zap className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />}
       {tip && (
         <div className="relative inline-block cursor-help transition-opacity opacity-40 hover:opacity-100">
            <AlertCircle className="w-3 h-3 text-slate-400" />
@@ -196,7 +202,7 @@ const OnboardingWizard = ({ step, setStep, active, update, addMaterial, updateMa
                 </div>
                 <div className="space-y-3">
                   <h1 className="text-3xl font-black text-slate-800 dark:text-slate-100 leading-tight tracking-tight">Berhenti nebak harga jual.</h1>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed px-4">Dalam 2 menit, Anda akan tahu harga ideal & target penjualan harian bisnis Anda.</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed px-4">Hitung HPP, tentukan harga, dan tahu target penjualan Anda dalam 2 menit.</p>
                 </div>
                 <button onClick={() => setStep(2)} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black py-5 rounded-[1.5rem] shadow-xl shadow-emerald-500/30 transition-all active:scale-95 text-base tracking-tight">Mulai Hitung Sekarang</button>
               </motion.div>
@@ -325,30 +331,36 @@ const LoginPage = ({ onLogin, isDark, toggleDark }) => (
       <button onClick={toggleDark} className="absolute top-6 right-6 p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors">
         {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
       </button>
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 p-8 shadow-sm">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center">
-            <Calculator className="w-5 h-5 text-white" />
+      <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-700 p-10 shadow-2xl shadow-emerald-500/10">
+        <div className="flex flex-col items-center text-center mb-8">
+          <div className="w-16 h-16 bg-emerald-500 rounded-[1.5rem] flex items-center justify-center mb-4 shadow-xl shadow-emerald-500/20 rotate-3">
+            <Calculator className="w-8 h-8 text-white" />
           </div>
-          <div>
-            <h1 className="text-base font-bold text-slate-800 dark:text-slate-100">HPP Master</h1>
-            <p className="text-xs text-slate-400 font-medium">Asisten Penentu Harga & Profit UMKM</p>
+          <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight mb-2">Berhenti Nebak Harga Jual</h1>
+          <p className="text-sm text-slate-400 font-medium leading-relaxed">Asisten Penentu Harga & Profit UMKM.<br/>Hitung harga jual yang pasti untung, bukan kira-kira.</p>
+        </div>
+        <div className="space-y-4 mb-8">
+          <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700/50">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-white dark:bg-slate-800 rounded-lg flex items-center justify-center shadow-sm">
+                <CheckCircle className="w-4 h-4 text-emerald-500" />
+              </div>
+              <div className="text-left">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Target Market</p>
+                <p className="text-xs font-bold text-slate-600 dark:text-slate-300">Reseller & UMKM Makanan</p>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="space-y-3 mb-6">
-          <div>
-            <Label>Username</Label>
-            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200">admin</div>
-          </div>
-          <div>
-            <Label>Password</Label>
-            <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5 text-sm text-slate-400">••••••••</div>
-          </div>
-        </div>
-        <button onClick={onLogin} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors active:scale-[0.98]">
-          Masuk
+        <button onClick={onLogin} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black py-4 rounded-2xl text-base shadow-xl shadow-emerald-500/30 transition-all active:scale-[0.97]">
+          Mulai Sekarang — Gratis
         </button>
-        <p className="text-xs text-slate-400 text-center mt-4">Demo mode — klik masuk untuk lanjut</p>
+        <div className="flex items-center justify-center gap-2 mt-6">
+          <div className="flex -space-x-2">
+            {[1,2,3].map(i => <div key={i} className="w-6 h-6 rounded-full border-2 border-white dark:border-slate-900 bg-slate-200 overflow-hidden"><img src={`https://i.pravatar.cc/100?u=${i}`} alt="user"/></div>)}
+          </div>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Dipercaya 2,400+ UMKM</p>
+        </div>
       </div>
     </div>
   </div>
@@ -375,6 +387,8 @@ export default function App() {
   const [businessProfile, setBusinessProfile] = useState({ name: 'Usaha Saya', owner: 'Owner' });
   const [showSavedMsg, setShowSavedMsg] = useState(false);
   const [wizardStep, setWizardStep] = useState(null);
+  const [isPremium, setIsPremium] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
 
   const API = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5000/api' : '/api');
 
@@ -466,6 +480,10 @@ export default function App() {
   const delCost = (fid) => update('fixedCosts', active.fixedCosts.filter(f => f.id !== fid));
 
   const addProduct = () => {
+    if (!isPremium && products.length >= 1) {
+      setShowPremiumModal(true);
+      return;
+    }
     const p = defaultProduct(products.length + 1);
     setProducts(prev => [...prev, p]);
     setActiveId(p.id);
@@ -478,6 +496,10 @@ export default function App() {
     if (activeId === id) setActiveId(next[0].id);
   };
   const duplicateProduct = () => {
+    if (!isPremium && products.length >= 1) {
+      setShowPremiumModal(true);
+      return;
+    }
     const p = { ...active, id: 'p-' + Date.now(), name: active.name + ' (Copy)' };
     setProducts(prev => [...prev, p]);
     setActiveId(p.id);
@@ -539,6 +561,11 @@ export default function App() {
                 <Calculator className="w-4 h-4 text-white" />
               </div>
               <span className="font-bold text-sm text-slate-800 dark:text-slate-100">HPP Master</span>
+              {isPremium ? (
+                <span className="text-[8px] font-black bg-emerald-500 text-white px-1.5 py-0.5 rounded-md uppercase tracking-tighter">PREMIUM</span>
+              ) : (
+                <button onClick={() => setShowPremiumModal(true)} className="text-[8px] font-black bg-gradient-to-r from-amber-400 to-orange-500 text-white px-1.5 py-0.5 rounded-md uppercase tracking-tighter shadow-lg shadow-amber-500/20 active:scale-90 transition-transform">UPGRADE</button>
+              )}
             </div>
             <input 
               value={businessProfile.name} 
@@ -1197,7 +1224,14 @@ export default function App() {
                     </div>
 
                      {/* What-If & Safe Price Hike Tool */}
-                     <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-xl p-5">
+                     <div className={`bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 rounded-xl p-5 relative overflow-hidden ${!isPremium ? 'opacity-70 grayscale-[0.5]' : ''}`}>
+                       {!isPremium && (
+                         <div className="absolute inset-0 z-10 bg-white/10 dark:bg-slate-900/10 backdrop-blur-[1px] flex items-center justify-center p-6 text-center">
+                           <button onClick={() => setShowPremiumModal(true)} className="bg-slate-900 dark:bg-emerald-500 text-white text-[10px] font-black px-4 py-2 rounded-xl shadow-xl flex items-center gap-2">
+                             <Zap className="w-3 h-3 fill-current" /> Buka Fitur "Naik Harga Aman"
+                           </button>
+                         </div>
+                       )}
                        <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-4 flex items-center gap-1.5 uppercase tracking-wider">
                          <Zap className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> Analisa "Naik Harga Aman"
                        </p>
@@ -1220,7 +1254,12 @@ export default function App() {
                      </div>
 
                     {/* Pricing History / Snapshots */}
-                    <div className="bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 rounded-xl p-5">
+                    <div className={`bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 rounded-xl p-5 relative overflow-hidden ${!isPremium ? 'opacity-70' : ''}`}>
+                      {!isPremium && (
+                         <div className="absolute inset-0 z-10 bg-white/20 dark:bg-slate-900/20 backdrop-blur-[1px] flex items-center justify-center">
+                           <button onClick={() => setShowPremiumModal(true)} className="bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-[10px] font-black px-4 py-2 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">Simpan Riwayat (Premium)</button>
+                         </div>
+                       )}
                       <div className="flex items-center justify-between mb-4">
                         <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Riwayat Strategi Harga</p>
                         <button onClick={() => {
@@ -1366,8 +1405,9 @@ export default function App() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 no-print">
-                      <button onClick={handlePrint} className="flex items-center justify-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                      <button onClick={isPremium ? handlePrint : () => setShowPremiumModal(true)} className="flex items-center justify-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors relative">
                         <Printer className="w-4 h-4" /> Cetak / PDF
+                        {!isPremium && <span className="absolute -top-2 -right-2 bg-amber-400 text-[8px] font-black px-1.5 py-0.5 rounded-full text-white shadow-lg">PRO</span>}
                       </button>
                       <button onClick={() => {
                         const headers = ["Produk", "HPP", "Harga Jual", "Laba/Unit", "Laba/Bulan", "ROI (%)"];
@@ -1417,6 +1457,43 @@ export default function App() {
               );
             })}
           </nav>
+
+          {/* ── PREMIUM MODAL ── */}
+          <AnimatePresence>
+            {showPremiumModal && (
+              <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+                <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white dark:bg-slate-900 w-full max-w-sm rounded-[2.5rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/10">
+                   <div className="p-8 text-center space-y-6">
+                      <div className="w-16 h-16 bg-amber-400 rounded-3xl flex items-center justify-center mx-auto shadow-xl shadow-amber-500/20 rotate-6">
+                         <Zap className="w-8 h-8 text-white fill-current" />
+                      </div>
+                      <div className="space-y-2">
+                         <h3 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">Buka Fitur Premium</h3>
+                         <p className="text-sm text-slate-500 dark:text-slate-400">Ambil kendali penuh atas profit bisnis Anda dengan fitur asisten tercanggih.</p>
+                      </div>
+                      <div className="space-y-3">
+                         {[
+                           'Kelola Multi Produk Tanpa Batas',
+                           'Laporan PDF Profesional (Tanpa Logo)',
+                           'Simulasi Skenario "What-If"',
+                           'Insight Bisnis Berbasis AI',
+                           'Simpan Riwayat Strategi Harga'
+                         ].map(f => (
+                           <div key={f} className="flex items-center gap-3 text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl">
+                              <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                              <span>{f}</span>
+                           </div>
+                         ))}
+                      </div>
+                      <div className="pt-2">
+                         <button onClick={() => { setIsPremium(true); setShowPremiumModal(false); }} className="w-full bg-slate-900 dark:bg-emerald-500 text-white font-black py-4 rounded-2xl shadow-xl transition-all active:scale-95">Upgrade Sekarang — 39rb/bln</button>
+                         <button onClick={() => setShowPremiumModal(false)} className="w-full text-xs font-bold text-slate-400 hover:text-slate-600 mt-4 py-2">Mungkin Nanti</button>
+                      </div>
+                   </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
 
       </div>
     </div>
