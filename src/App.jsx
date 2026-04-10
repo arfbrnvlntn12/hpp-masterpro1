@@ -43,7 +43,7 @@ const calcMetrics = (p) => {
     .filter(f => f.isActive !== false)
     .reduce((s, f) => s + (Number(f.amount) || 0), 0);
 
-  const hppUnit = matTotal + fixedTotal / vol;
+  const hppUnit = matTotal + (vol > 0 ? fixedTotal / vol : 0);
   const multiplier = 1 - margin / 100 - fee / 100;
   const sellPrice = multiplier > 0 ? hppUnit / multiplier : hppUnit * 2;
   const profitUnit = sellPrice - hppUnit - sellPrice * (fee / 100);
@@ -111,23 +111,26 @@ const Label = ({ children }) => (
   <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{children}</p>
 );
 
-const Input = ({ label, type = 'text', prefix, suffix, ...props }) => (
-  <div>
-    {label && <Label>{label}</Label>}
-    <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5 focus-within:ring-2 focus-within:ring-emerald-500/30 focus-within:border-emerald-400 transition-all">
-      {prefix && <span className="text-slate-400 text-xs shrink-0">{prefix}</span>}
-      <input
-        type={type}
-        inputMode={type === 'number' ? 'decimal' : undefined}
-        className="flex-1 bg-transparent text-sm font-medium text-slate-800 dark:text-slate-100 outline-none min-w-0 placeholder:text-slate-300"
-        value={props.value === 0 ? '' : props.value}
-        onFocus={(e) => e.target.select()}
-        {...props}
-      />
-      {suffix && <span className="text-slate-400 text-xs shrink-0">{suffix}</span>}
+const Input = ({ label, type = 'text', prefix, suffix, ...props }) => {
+  const displayValue = (type === 'number' && (props.value === 0 || props.value === '0' || !props.value)) ? '' : props.value;
+  return (
+    <div>
+      {label && <Label>{label}</Label>}
+      <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2.5 focus-within:ring-2 focus-within:ring-emerald-500/30 focus-within:border-emerald-400 transition-all">
+        {prefix && <span className="text-slate-400 text-xs shrink-0">{prefix}</span>}
+        <input
+          type={type}
+          inputMode={type === 'number' ? 'decimal' : undefined}
+          className="flex-1 bg-transparent text-sm font-medium text-slate-800 dark:text-slate-100 outline-none min-w-0 placeholder:text-slate-300"
+          value={displayValue}
+          onFocus={(e) => e.target.select()}
+          {...props}
+        />
+        {suffix && <span className="text-slate-400 text-xs shrink-0">{suffix}</span>}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const Stat = ({ label, value, sub, accent = false, small = false, tip = null, premium = false, onLockClick }) => (
   <div className={`rounded-xl p-4 border relative group overflow-hidden ${accent ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800' : 'bg-white dark:bg-slate-800/60 border-slate-100 dark:border-slate-700/60'}`}>
@@ -397,8 +400,8 @@ export default function App() {
   const defaultProduct = (n = 1) => ({
     id: 'p-' + Date.now(),
     name: `Produk ${n}`,
-    targetMargin: 40,
-    expectedSalesVolume: 100,
+    targetMargin: 0,
+    expectedSalesVolume: 0,
     marketplaceFee: 0,
     actualSales: 0,
     materials: [],
@@ -474,7 +477,7 @@ export default function App() {
   const updateMat = (mid, field, val) => update('materials', active.materials.map(m => m.id === mid ? { ...m, [field]: val } : m));
   const updateCost = (fid, field, val) => update('fixedCosts', active.fixedCosts.map(f => f.id === fid ? { ...f, [field]: val } : f));
 
-  const addMaterial = () => update('materials', [...(active.materials || []), { id: 'm-' + Date.now(), name: 'Bahan Baru', packPrice: 0, packSize: 1, qty: 1, waste: 0 }]);
+  const addMaterial = () => update('materials', [...(active.materials || []), { id: 'm-' + Date.now(), name: 'Bahan Baru', packPrice: 0, packSize: 0, qty: 0, waste: 0 }]);
   const delMaterial = (mid) => update('materials', active.materials.filter(m => m.id !== mid));
   const addCost = () => update('fixedCosts', [...(active.fixedCosts || []), { id: 'f-' + Date.now(), name: 'Biaya Baru', amount: 0, isActive: true }]);
   const delCost = (fid) => update('fixedCosts', active.fixedCosts.filter(f => f.id !== fid));
@@ -1080,9 +1083,9 @@ export default function App() {
                             </div>
                           </div>
                           <div className="grid grid-cols-2 gap-2.5">
-                            <Input label="Harga pack (Rp)" type="number" value={item.packPrice} onChange={e => updateMat(item.id, 'packPrice', Number(e.target.value))} placeholder="0" />
-                            <Input label="Isi pack (gr/ml/pcs)" type="number" value={item.packSize} onChange={e => updateMat(item.id, 'packSize', Number(e.target.value))} placeholder="1" />
-                            <Input label="Pemakaian/produk" type="number" value={item.qty} onChange={e => updateMat(item.id, 'qty', Number(e.target.value))} placeholder="0" />
+                            <Input label="Harga pack (Rp)" type="number" value={item.packPrice} onChange={e => updateMat(item.id, 'packPrice', Number(e.target.value))} placeholder="..." />
+                            <Input label="Isi pack (gr/ml/pcs)" type="number" value={item.packSize} onChange={e => updateMat(item.id, 'packSize', Number(e.target.value))} placeholder="..." />
+                            <Input label="Pemakaian/produk" type="number" value={item.qty} onChange={e => updateMat(item.id, 'qty', Number(e.target.value))} placeholder="..." />
                             <Input label="Susut/Waste" type="number" value={item.waste} onChange={e => updateMat(item.id, 'waste', Number(e.target.value))} placeholder="0" suffix="%" />
                           </div>
                         </div>
@@ -1145,13 +1148,10 @@ export default function App() {
                           </button>
                         </div>
                         {/* Row 2: amount input full width */}
-                        <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-700/60 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-emerald-500/30">
-                          <span className="text-xs text-slate-400 shrink-0">Rp</span>
-                          <input type="number" inputMode="decimal" value={item.amount === 0 ? '' : item.amount} 
-                            onChange={e => updateCost(item.id, 'amount', Number(e.target.value))}
-                            onFocus={(e) => e.target.select()}
-                            className="bg-transparent text-sm font-medium outline-none flex-1 text-right text-slate-700 dark:text-slate-200" />
-                          <span className="text-xs text-slate-400 shrink-0">/bln</span>
+                        <div className="mt-2">
+                           <Input type="number" value={item.amount} 
+                             onChange={e => updateCost(item.id, 'amount', Number(e.target.value))}
+                             prefix="Rp" suffix="/ bulan" placeholder="..." />
                         </div>
                       </div>
                     ))}
