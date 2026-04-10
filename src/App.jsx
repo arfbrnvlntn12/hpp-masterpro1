@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
 // --- AUTH CONFIG ---
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5000/api' : '/api');
 const setAuthToken = (token) => {
   if (token) {
     axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -217,7 +217,10 @@ const AuthPage = ({ onAuthSuccess }) => {
       const { data } = await axios.post(API_BASE + endpoint, form);
       setAuthToken(data.token);
       onAuthSuccess(data.user);
-    } catch (err) { alert(err.response?.data?.message || 'Auth failed'); }
+    } catch (err) { 
+      const msg = err.response?.data?.error || err.response?.data?.message || 'Gagal tersambung ke server';
+      alert(msg); 
+    }
     finally { setLoading(false); }
   };
 
