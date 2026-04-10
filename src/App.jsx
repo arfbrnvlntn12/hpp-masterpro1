@@ -1486,7 +1486,10 @@ export default function App() {
                          ))}
                       </div>
                       <div className="pt-2">
-                         <button onClick={() => { setIsPremium(true); setShowPremiumModal(false); }} className="w-full bg-slate-900 dark:bg-emerald-500 text-white font-black py-4 rounded-2xl shadow-xl transition-all active:scale-95">Upgrade Sekarang — 39rb/bln</button>
+                         <button onClick={() => {
+                           const msg = `Halo Admin HPP Master, saya ingin upgrade ke Premium untuk usaha "${businessProfile.name}". Tolong info metode pembayarannya ya.`;
+                           window.open(`https://wa.me/6283871829666?text=${encodeURIComponent(msg)}`, '_blank');
+                         }} className="w-full bg-slate-900 dark:bg-emerald-500 text-white font-black py-4 rounded-2xl shadow-xl transition-all active:scale-95">Upgrade Sekarang — 39rb/bln</button>
                          <button onClick={() => setShowPremiumModal(false)} className="w-full text-xs font-bold text-slate-400 hover:text-slate-600 mt-4 py-2">Mungkin Nanti</button>
                       </div>
                    </div>
