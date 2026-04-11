@@ -191,11 +191,11 @@ const Badge = ({ children, color = 'slate' }) => {
 
 // ─── LOGIN PAGE ───────────────────────────────────────────
 const LoginPage = ({ onLogin, isDark, toggleDark }) => (
-  <div className={`min-h-screen flex items-center justify-center p-6 ${isDark ? 'dark bg-slate-950' : 'bg-slate-50'}`}>
-    <div className="w-full max-w-sm">
-      <button onClick={toggleDark} className="absolute top-6 right-6 p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors">
-        {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-      </button>
+  <div className={`min-h-screen w-full flex items-center justify-center p-6 relative ${isDark ? 'dark bg-slate-950' : 'bg-gradient-to-br from-slate-50 via-emerald-50/30 to-slate-100'}`}>
+    <button onClick={toggleDark} className="fixed top-6 right-6 p-2.5 rounded-xl bg-white/80 dark:bg-slate-800/80 backdrop-blur border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-all z-10 shadow-sm">
+      {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+    </button>
+    <div className="w-full max-w-sm mx-auto">
       <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-700 p-10 shadow-2xl shadow-emerald-500/10">
         <div className="flex flex-col items-center text-center mb-8">
           <div className="w-16 h-16 bg-emerald-500 rounded-[1.5rem] flex items-center justify-center mb-4 shadow-xl shadow-emerald-500/20 rotate-3 text-white">
@@ -207,6 +207,7 @@ const LoginPage = ({ onLogin, isDark, toggleDark }) => (
         <button onClick={onLogin} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black py-4 rounded-2xl text-base shadow-xl shadow-emerald-500/30 transition-all active:scale-[0.97]">
           Mulai Sekarang — Gratis
         </button>
+        <p className="text-center text-[10px] text-slate-300 dark:text-slate-600 mt-6 font-medium">Dipercaya 10,000+ UMKM Indonesia</p>
       </div>
     </div>
   </div>
@@ -558,15 +559,64 @@ export default function App() {
 
           {/* ── CONTENT ── */}
           <main className="flex-1 overflow-y-auto scrollbar-thin pb-28 md:pb-8">
+            {/* Mobile Header */}
+            <div className="md:hidden flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-50">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 bg-emerald-500 rounded-lg flex items-center justify-center"><Calculator className="w-4 h-4 text-white" /></div>
+                <span className="font-bold text-sm text-slate-800 dark:text-slate-100">HPP Master</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setIsDark(d => !d)} className="p-2 rounded-lg text-slate-400"><Sun className="w-4 h-4" /></button>
+                <button onClick={handleLogout} className="p-2 rounded-lg text-slate-400 hover:text-red-500"><LogOut className="w-4 h-4" /></button>
+              </div>
+            </div>
+
             <div className="max-w-3xl mx-auto p-4 md:p-8">
+              {/* Desktop Header */}
+              <div className="hidden md:flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-black text-slate-800 dark:text-slate-100">{active?.name || 'Produk'}</h2>
+                  <p className="text-xs text-slate-400">Kelola dan analisa profitabilitas produk Anda</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setIsDark(d => !d)} className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+                    {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                  </button>
+                  <button onClick={duplicateProduct} className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-400 hover:text-emerald-500 transition-colors"><Copy className="w-4 h-4" /></button>
+                </div>
+              </div>
+
               <AnimatePresence mode="wait">
+                {/* ── DASHBOARD TAB ── */}
                 {activeTab === 'dashboard' && (
                   <motion.div key="dash" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
                     <div className="bg-emerald-600 rounded-2xl p-6 shadow-xl text-white">
-                      <p className="text-3xl font-black tracking-tight">{fmt(m.recommendation.price)}</p>
-                      <p className="text-xs opacity-80">Harga Jual Optimal</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-70 mb-1">Harga Jual Optimal</p>
+                      <p className="text-3xl font-black tracking-tight">{fmt(m.sellPrice)}</p>
+                      <p className="text-xs opacity-80 mt-1">Margin {m.margin}% · Laba {fmt(m.profitUnit)}/unit</p>
                     </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Stat label="HPP / Unit" value={fmt(m.hppUnit)} sub="Biaya pokok produksi" />
+                      <Stat label="Laba / Unit" value={fmt(m.profitUnit)} accent sub="Setelah semua biaya" />
+                      <Stat label="Laba Harian" value={fmt(m.profitDaily)} sub="Estimasi per hari" />
+                      <Stat label="Laba Bulanan" value={fmt(m.profitMonthly)} accent sub={`${active?.expectedSalesVolume || 0} unit/bulan`} />
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <Stat small label="Total Bahan" value={fmt(m.matTotal)} />
+                      <Stat small label="Biaya Tetap" value={fmt(m.fixedTotal)} />
+                      <Stat small label="BEP" value={`${m.bepDaily} pcs/hari`} />
+                    </div>
+                    {m.insights.length > 0 && (
+                      <div className="space-y-2">
+                        {m.insights.map((ins, i) => (
+                          <div key={i} className={`p-3 rounded-xl text-xs font-bold flex items-start gap-2 ${ins.type === 'danger' ? 'bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400' : ins.type === 'warning' ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400' : 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400'}`}>
+                            <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />{ins.text}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     <div className="bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 rounded-xl p-4">
+                      <p className="text-xs font-bold text-slate-500 mb-3">Proyeksi Laba vs Volume</p>
                       <ResponsiveContainer width="100%" height={180}>
                         <AreaChart data={[50, 100, 150, 200, 250, 300].map(u => ({ unit: `${u}`, laba: Math.max(0, Math.round(m.profitUnit * u - (u < 100 ? m.fixedTotal * (1 - u / 100) : 0))) }))}>
                           <CartesianGrid strokeDasharray="2 4" stroke={isDark ? '#1e293b' : '#f1f5f9'} />
@@ -579,9 +629,146 @@ export default function App() {
                     </div>
                   </motion.div>
                 )}
+
+                {/* ── MATERIALS TAB ── */}
+                {activeTab === 'materials' && (
+                  <motion.div key="mat" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div><h3 className="text-lg font-black text-slate-800 dark:text-slate-100">Bahan Baku</h3><p className="text-xs text-slate-400">Kelola bahan produksi Anda</p></div>
+                      <button onClick={addMaterial} className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all active:scale-95"><Plus className="w-3.5 h-3.5" /> Tambah</button>
+                    </div>
+                    {(active?.materials || []).length === 0 && <div className="text-center py-12 text-slate-300 dark:text-slate-600"><Package className="w-10 h-10 mx-auto mb-3 opacity-40" /><p className="text-sm font-bold">Belum ada bahan baku</p></div>}
+                    {(active?.materials || []).map((mat, i) => (
+                      <div key={mat.id} className="bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 rounded-2xl p-5 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Badge color="blue">Bahan {i + 1}</Badge>
+                          <button onClick={() => delMaterial(mat.id)} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                        </div>
+                        <Input label="Nama Bahan" value={mat.name} onChange={e => updateMat(mat.id, 'name', e.target.value)} />
+                        <div className="grid grid-cols-2 gap-3">
+                          <Input label="Harga Pack (Rp)" type="number" value={mat.packPrice} onChange={e => updateMat(mat.id, 'packPrice', Number(e.target.value))} prefix="Rp" />
+                          <Input label="Isi Pack" type="number" value={mat.packSize} onChange={e => updateMat(mat.id, 'packSize', Number(e.target.value))} suffix="pcs" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <Input label="Qty Digunakan" type="number" value={mat.qty} onChange={e => updateMat(mat.id, 'qty', Number(e.target.value))} />
+                          <Input label="Waste (%)" type="number" value={mat.waste} onChange={e => updateMat(mat.id, 'waste', Number(e.target.value))} suffix="%" />
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 text-xs font-bold text-slate-500">
+                          Biaya: <span className="text-emerald-600 dark:text-emerald-400">{fmt(((mat.packPrice || 0) / Math.max(0.001, mat.packSize || 1)) * (mat.qty || 0) * (1 + (mat.waste || 0) / 100))}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </motion.div>
+                )}
+
+                {/* ── COSTS TAB ── */}
+                {activeTab === 'costs' && (
+                  <motion.div key="cost" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div><h3 className="text-lg font-black text-slate-800 dark:text-slate-100">Biaya Operasional</h3><p className="text-xs text-slate-400">Biaya tetap bulanan bisnis Anda</p></div>
+                      <button onClick={addCost} className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all active:scale-95"><Plus className="w-3.5 h-3.5" /> Tambah</button>
+                    </div>
+                    {(active?.fixedCosts || []).length === 0 && <div className="text-center py-12 text-slate-300 dark:text-slate-600"><DollarSign className="w-10 h-10 mx-auto mb-3 opacity-40" /><p className="text-sm font-bold">Belum ada biaya operasional</p></div>}
+                    {(active?.fixedCosts || []).map((cost, i) => (
+                      <div key={cost.id} className="bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 rounded-2xl p-5 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Badge>Biaya {i + 1}</Badge>
+                          <button onClick={() => delCost(cost.id)} className="text-slate-300 hover:text-red-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                        </div>
+                        <Input label="Nama Biaya" value={cost.name} onChange={e => updateCost(cost.id, 'name', e.target.value)} placeholder="Contoh: Sewa Tempat, Gaji, Listrik" />
+                        <Input label="Jumlah (Rp/Bulan)" type="number" value={cost.amount} onChange={e => updateCost(cost.id, 'amount', Number(e.target.value))} prefix="Rp" />
+                      </div>
+                    ))}
+                    {(active?.fixedCosts || []).length > 0 && (
+                      <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-2xl p-5 flex items-center justify-between">
+                        <p className="text-sm font-bold text-slate-600 dark:text-slate-300">Total Biaya Operasional</p>
+                        <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">{fmt(m.fixedTotal)}/bln</p>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+
+                {/* ── STRATEGY TAB ── */}
+                {activeTab === 'strategy' && (
+                  <motion.div key="strat" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
+                    <h3 className="text-lg font-black text-slate-800 dark:text-slate-100">Strategi Harga Jual</h3>
+                    <div className="space-y-3">
+                      <Input label="Target Margin Keuntungan (%)" type="number" value={active?.targetMargin} onChange={e => update('targetMargin', Number(e.target.value))} suffix="%" />
+                      <Input label="Target Penjualan (Unit/Bulan)" type="number" value={active?.expectedSalesVolume} onChange={e => update('expectedSalesVolume', Number(e.target.value))} suffix="unit" />
+                      <div className="flex items-center justify-between bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 rounded-xl p-4">
+                        <div><p className="text-sm font-bold text-slate-700 dark:text-slate-200">Jual di Marketplace?</p><p className="text-[10px] text-slate-400">Tambahkan fee platform</p></div>
+                        <button onClick={() => update('useMarketplace', !active?.useMarketplace)} className={`w-10 h-6 rounded-full transition-all ${active?.useMarketplace ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'} relative`}>
+                          <div className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-all shadow ${active?.useMarketplace ? 'left-5' : 'left-1'}`} />
+                        </button>
+                      </div>
+                      {active?.useMarketplace && <Input label="Fee Marketplace (%)" type="number" value={active?.marketplaceFee} onChange={e => update('marketplaceFee', Number(e.target.value))} suffix="%" />}
+                    </div>
+                    <div className="bg-emerald-600 rounded-2xl p-6 text-white mt-4">
+                      <p className="text-[10px] font-bold uppercase tracking-widest opacity-70 mb-1">Hasil Perhitungan</p>
+                      <p className="text-3xl font-black">{fmt(m.sellPrice)}</p>
+                      <p className="text-sm opacity-80 mt-1">Laba {fmt(m.profitUnit)}/unit · {fmt(m.profitMonthly)}/bulan</p>
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* ── REPORT TAB ── */}
+                {activeTab === 'report' && (
+                  <motion.div key="report" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-black text-slate-800 dark:text-slate-100">Laporan Bisnis</h3>
+                      <button onClick={handlePrint} className="flex items-center gap-1.5 bg-slate-900 dark:bg-emerald-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all active:scale-95"><Printer className="w-3.5 h-3.5" /> Cetak</button>
+                    </div>
+                    <div id="print-area" className="space-y-4">
+                      <div className="bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 rounded-2xl p-6 space-y-4">
+                        <h4 className="text-sm font-black text-slate-800 dark:text-slate-100 flex items-center gap-2"><FileText className="w-4 h-4 text-emerald-500" /> Ringkasan Produk: {active?.name}</h4>
+                        <div className="grid grid-cols-2 gap-y-3 text-sm">
+                          <div><p className="text-[10px] text-slate-400 font-bold uppercase">HPP/Unit</p><p className="font-black text-slate-800 dark:text-slate-100">{fmt(m.hppUnit)}</p></div>
+                          <div><p className="text-[10px] text-slate-400 font-bold uppercase">Harga Jual</p><p className="font-black text-emerald-600">{fmt(m.sellPrice)}</p></div>
+                          <div><p className="text-[10px] text-slate-400 font-bold uppercase">Laba/Unit</p><p className="font-black text-slate-800 dark:text-slate-100">{fmt(m.profitUnit)}</p></div>
+                          <div><p className="text-[10px] text-slate-400 font-bold uppercase">Margin</p><p className="font-black text-emerald-600">{m.margin}%</p></div>
+                          <div><p className="text-[10px] text-slate-400 font-bold uppercase">Laba Bulanan</p><p className="font-black text-slate-800 dark:text-slate-100">{fmt(m.profitMonthly)}</p></div>
+                          <div><p className="text-[10px] text-slate-400 font-bold uppercase">Laba Tahunan</p><p className="font-black text-emerald-600">{fmt(m.profitAnnual)}</p></div>
+                        </div>
+                      </div>
+                      <div className="bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 rounded-2xl p-6 space-y-3">
+                        <h4 className="text-sm font-black text-slate-800 dark:text-slate-100">Rincian Bahan Baku</h4>
+                        {(active?.materials || []).map(mat => (
+                          <div key={mat.id} className="flex items-center justify-between py-2 border-b border-slate-50 dark:border-slate-700/40 last:border-0">
+                            <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{mat.name}</span>
+                            <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{fmt(((mat.packPrice || 0) / Math.max(0.001, mat.packSize || 1)) * (mat.qty || 0))}</span>
+                          </div>
+                        ))}
+                        <div className="flex items-center justify-between pt-2"><span className="text-xs font-black text-slate-800 dark:text-slate-100">Total Bahan</span><span className="text-sm font-black text-emerald-600">{fmt(m.matTotal)}</span></div>
+                      </div>
+                      <div className="bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/60 rounded-2xl p-6 space-y-3">
+                        <h4 className="text-sm font-black text-slate-800 dark:text-slate-100">Rincian Biaya Operasional</h4>
+                        {(active?.fixedCosts || []).map(cost => (
+                          <div key={cost.id} className="flex items-center justify-between py-2 border-b border-slate-50 dark:border-slate-700/40 last:border-0">
+                            <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{cost.name}</span>
+                            <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{fmt(cost.amount)}</span>
+                          </div>
+                        ))}
+                        <div className="flex items-center justify-between pt-2"><span className="text-xs font-black text-slate-800 dark:text-slate-100">Total Operasional</span><span className="text-sm font-black text-emerald-600">{fmt(m.fixedTotal)}/bln</span></div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
               </AnimatePresence>
             </div>
           </main>
+
+          {/* ── MOBILE BOTTOM NAV ── */}
+          <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-around py-2 px-1 z-50 safe-area-pb">
+            {NAV.map(({ id, label, icon: Icon }) => (
+              <button key={id} onClick={() => setActiveTab(id)} className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all ${activeTab === id ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                <Icon className="w-4 h-4" />
+                <span className="text-[9px] font-bold">{label}</span>
+              </button>
+            ))}
+          </nav>
+
+          {/* ── WIZARD ── */}
+          {wizardStep && <OnboardingWizard step={wizardStep} setStep={setWizardStep} active={active} update={update} addMaterial={addMaterial} updateMat={updateMat} addCost={addCost} updateCost={updateCost} onComplete={() => setWizardStep(null)} isDark={isDark} />}
 
           {/* ── PREMIUM MODAL ── */}
           <AnimatePresence>
