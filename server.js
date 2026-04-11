@@ -178,72 +178,12 @@ app.delete('/api/master-materials/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// --- AUTHENTICATION MIDDLEWARE ---
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) return res.status(401).json({ error: 'Token missing' });
-
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: 'Token invalid' });
-    req.user = user;
-    next();
-  });
-};
-
-// --- AUTH ROUTES ---
-app.post('/api/auth/register', async (req, res) => {
-  const { email, password, name } = req.body;
-  try {
-    const id = 'u-' + Date.now();
-    const hashedPassword = await bcrypt.hash(password, 10);
-    await pool.query(
-      'INSERT INTO users (id, email, password, name) VALUES (?, ?, ?, ?)',
-      [id, email, hashedPassword, name]
-    );
-    
-    const token = jwt.sign({ id, email, name }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id, email, name, is_premium: false } });
-  } catch (err) {
-    if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: 'Email sudah terdaftar' });
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/auth/login', async (req, res) => {
-  const { email, password } = req.body;
-  try {
-    const [users] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
-    if (users.length === 0) return res.status(400).json({ error: 'User tidak ditemukan' });
-
-    const user = users[0];
-    const validPassword = await bcrypt.compare(password, user.password);
-    if (!validPassword) return res.status(400).json({ error: 'Password salah' });
-
-    const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user.id, email: user.email, name: user.name, is_premium: Boolean(user.is_premium) } });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// GET Current User Profile
-app.get('/api/auth/me', authenticateToken, async (req, res) => {
-  try {
-    const [users] = await pool.query('SELECT id, email, name, is_premium FROM users WHERE id = ?', [req.user.id]);
-    if (users.length === 0) return res.status(404).json({ error: 'User not found' });
-    res.json({ ...users[0], is_premium: Boolean(users[0].is_premium) });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // --- API ROUTES ---
+const SHARED_USER = 'shared_user';
 
 // Helper function to assemble the nested product object
-async function getFullProduct(productId, userId) {
-  const [products] = await pool.query('SELECT * FROM products WHERE id = ? AND user_id = ?', [productId, userId]);
+async function getFullProduct(productId) {
+  const [products] = await pool.query('SELECT * FROM products WHERE id = ?', [productId]);
   if (products.length === 0) return null;
   const product = {
     ...products[0],
@@ -272,12 +212,12 @@ async function getFullProduct(productId, userId) {
 }
 
 // GET all products
-app.get('/api/products', authenticateToken, async (req, res) => {
+app.get('/api/products', async (req, res) => {
   try {
-    const [products] = await pool.query('SELECT * FROM products WHERE user_id = ?', [req.user.id]);
+    const [products] = await pool.query('SELECT * FROM products');
     const result = [];
     for (let p of products) {
-      const full = await getFullProduct(p.id, req.user.id);
+      const full = await getFullProduct(p.id);
       result.push(full);
     }
     res.json(result);
@@ -287,9 +227,9 @@ app.get('/api/products', authenticateToken, async (req, res) => {
 });
 
 // GET single product
-app.get('/api/products/:id', authenticateToken, async (req, res) => {
+app.get('/api/products/:id', async (req, res) => {
   try {
-    const product = await getFullProduct(req.params.id, req.user.id);
+    const product = await getFullProduct(req.params.id);
     if (!product) return res.status(404).json({ error: 'Not found' });
     res.json(product);
   } catch (err) {
@@ -298,27 +238,26 @@ app.get('/api/products/:id', authenticateToken, async (req, res) => {
 });
 
 // CREATE / UPDATE product
-app.post('/api/products/:id', authenticateToken, async (req, res) => {
+app.post('/api/products/:id', async (req, res) => {
   const { id } = req.params;
-  const userId = req.user.id;
   const data = req.body;
   const connection = await pool.getConnection();
 
   try {
     await connection.beginTransaction();
 
-    const [existing] = await connection.query('SELECT id FROM products WHERE id = ? AND user_id = ?', [id, userId]);
+    const [existing] = await connection.query('SELECT id FROM products WHERE id = ?', [id]);
     
     // Update or Insert Core Product Details
     if (existing.length === 0) {
       await connection.query(
         'INSERT INTO products (id, user_id, name, type, targetMargin, expectedSalesVolume, useMarketplace, marketplaceFee) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [id, userId, data.name, data.type, data.targetMargin, data.expectedSalesVolume, data.useMarketplace, data.marketplaceFee]
+        [id, SHARED_USER, data.name, data.type, data.targetMargin, data.expectedSalesVolume, data.useMarketplace, data.marketplaceFee]
       );
     } else {
       if (data.name !== undefined) {
-         await connection.query('UPDATE products SET name = ?, type = ?, targetMargin = ?, expectedSalesVolume = ?, useMarketplace = ?, marketplaceFee = ? WHERE id = ? AND user_id = ?',
-         [data.name || existing[0].name, data.type || existing[0].type, data.targetMargin || existing[0].targetMargin, data.expectedSalesVolume || existing[0].expectedSalesVolume, data.useMarketplace || existing[0].useMarketplace, data.marketplaceFee || existing[0].marketplaceFee, id, userId]);
+         await connection.query('UPDATE products SET name = ?, type = ?, targetMargin = ?, expectedSalesVolume = ?, useMarketplace = ?, marketplaceFee = ? WHERE id = ?',
+         [data.name || existing[0].name, data.type || existing[0].type, data.targetMargin || existing[0].targetMargin, data.expectedSalesVolume || existing[0].expectedSalesVolume, data.useMarketplace || existing[0].useMarketplace, data.marketplaceFee || existing[0].marketplaceFee, id]);
       }
     }
 
@@ -345,7 +284,7 @@ app.post('/api/products/:id', authenticateToken, async (req, res) => {
     }
 
     await connection.commit();
-    const updatedProduct = await getFullProduct(id, userId);
+    const updatedProduct = await getFullProduct(id);
     res.json(updatedProduct);
   } catch (err) {
     await connection.rollback();
@@ -357,9 +296,9 @@ app.post('/api/products/:id', authenticateToken, async (req, res) => {
 });
 
 // DELETE product
-app.delete('/api/products/:id', authenticateToken, async (req, res) => {
+app.delete('/api/products/:id', async (req, res) => {
   try {
-    await pool.query('DELETE FROM products WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
+    await pool.query('DELETE FROM products WHERE id = ?', [req.params.id]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

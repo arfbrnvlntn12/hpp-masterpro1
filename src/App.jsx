@@ -10,21 +10,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
-// --- AUTH CONFIG ---
-const API_BASE = import.meta.env.VITE_API_URL || (window.location.hostname === 'localhost' ? 'http://localhost:5000/api' : '/api');
-const setAuthToken = (token) => {
-  if (token) {
-    axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    localStorage.setItem('hpp_token', token);
-  } else {
-    delete axios.defaults.headers.common['Authorization'];
-    localStorage.removeItem('hpp_token');
-  }
-};
-
-// Initialize token from storage
-const savedToken = localStorage.getItem('hpp_token');
-if (savedToken) axios.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`;
+const API_BASE = import.meta.env.VITE_API_URL || (window.location.hostname.includes('localhost') || window.location.hostname.includes('127.0.0.1') ? 'http://localhost:5000/api' : '/api');
 
 
 // ─── UTILS ───────────────────────────────────────────────
@@ -203,42 +189,29 @@ const Badge = ({ children, color = 'slate' }) => {
   return <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${colors[color]}`}>{children}</span>;
 };
 
-// ─── AUTH PAGE ───────────────────────────────────────────
-const AuthPage = ({ onAuthSuccess }) => {
-  const [isLogin, setIsLogin] = useState(true);
-  const [form, setForm] = useState({ email: '', password: '', name: '' });
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const endpoint = isLogin ? '/auth/login' : '/auth/register';
-      const { data } = await axios.post(API_BASE + endpoint, form);
-      setAuthToken(data.token);
-      onAuthSuccess(data.user);
-    } catch (err) { 
-      const msg = err.response?.data?.error || err.response?.data?.message || 'Gagal tersambung ke server';
-      alert(msg); 
-    }
-    finally { setLoading(false); }
-  };
-
-  return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-slate-950">
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm bg-slate-900 rounded-[2rem] p-8 border border-slate-800 shadow-2xl">
-        <h2 className="text-2xl font-black text-white mb-6">{isLogin ? 'Selamat Datang' : 'Buat Akun'}</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!isLogin && <input className="w-full bg-slate-800 p-3 rounded-xl text-white" placeholder="Nama Usaha" onChange={e => setForm({...form, name: e.target.value})} />}
-          <input className="w-full bg-slate-800 p-3 rounded-xl text-white" placeholder="Email" onChange={e => setForm({...form, email: e.target.value})} />
-          <input className="w-full bg-slate-800 p-3 rounded-xl text-white" type="password" placeholder="Password" onChange={e => setForm({...form, password: e.target.value})} />
-          <button disabled={loading} className="w-full bg-emerald-500 py-4 rounded-xl font-bold text-white">{loading ? '...' : (isLogin ? 'Masuk' : 'Daftar')}</button>
-        </form>
-        <button onClick={() => setIsLogin(!isLogin)} className="w-full text-xs text-slate-500 mt-4">{isLogin ? 'Belum punya akun? Daftar' : 'Sudah punya akun? Masuk'}</button>
-      </motion.div>
+// ─── LOGIN PAGE ───────────────────────────────────────────
+const LoginPage = ({ onLogin, isDark, toggleDark }) => (
+  <div className={`min-h-screen flex items-center justify-center p-6 ${isDark ? 'dark bg-slate-950' : 'bg-slate-50'}`}>
+    <div className="w-full max-w-sm">
+      <button onClick={toggleDark} className="absolute top-6 right-6 p-2 rounded-lg text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors">
+        {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+      </button>
+      <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-700 p-10 shadow-2xl shadow-emerald-500/10">
+        <div className="flex flex-col items-center text-center mb-8">
+          <div className="w-16 h-16 bg-emerald-500 rounded-[1.5rem] flex items-center justify-center mb-4 shadow-xl shadow-emerald-500/20 rotate-3 text-white">
+            <Calculator className="w-8 h-8" />
+          </div>
+          <h1 className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight mb-2">HPP Master</h1>
+          <p className="text-sm text-slate-400 font-medium leading-relaxed">Berhenti Nebak Harga Jual.<br/>Hitung harga jual yang pasti untung.</p>
+        </div>
+        <button onClick={onLogin} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-black py-4 rounded-2xl text-base shadow-xl shadow-emerald-500/30 transition-all active:scale-[0.97]">
+          Mulai Sekarang — Gratis
+        </button>
+      </div>
     </div>
-  );
-};
+  </div>
+);
+
 
 // ─── ONBOARDING WIZARD ──────────────────────────────────────
 const OnboardingWizard = ({ step, setStep, active, update, addMaterial, updateMat, addCost, updateCost, onComplete, isDark }) => {
@@ -411,8 +384,7 @@ const NAV = [
 
 // ─── MAIN APP ─────────────────────────────────────────────
 export default function App() {
-  const [user, setUser] = useState(null);
-  const [authLoading, setAuthLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isDark, setIsDark] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
@@ -427,45 +399,27 @@ export default function App() {
     document.documentElement.classList.toggle('dark', isDark);
   }, [isDark]);
 
-  // Auth Check on mount
   useEffect(() => {
-    const checkAuth = async () => {
-      if (!savedToken) {
-        setAuthLoading(false);
-        return;
-      }
-      try {
-        const { data } = await axios.get(API_BASE + '/auth/me');
-        setUser(data);
-        setIsPremium(data.is_premium);
-      } catch (err) {
-        setAuthToken(null);
-      } finally {
-        setAuthLoading(false);
-      }
-    };
-    checkAuth();
-  }, []);
-
-  useEffect(() => {
-    if (!user) return;
     const fetchAll = async () => {
       setLoading(true);
       try {
         const { data } = await axios.get(`${API_BASE}/products`);
         setProducts(data);
         if (data.length > 0) setActiveId(data[0].id);
+        else {
+          const init = defaultProduct(1);
+          setProducts([init]);
+          setActiveId(init.id);
+          setWizardStep(1);
+        }
       } catch (err) { console.error('Load failed:', err); }
       finally { setLoading(false); }
     };
     fetchAll();
-  }, [user]);
+  }, []);
 
   const handleLogout = () => {
-    setAuthToken(null);
-    setUser(null);
-    setProducts([]);
-    setActiveId(null);
+    setIsLoggedIn(false);
   };
 
   const defaultProduct = (n = 1) => ({
@@ -550,12 +504,8 @@ export default function App() {
     <div className={`flex h-screen bg-slate-50 dark:bg-slate-950 font-sans selection:bg-emerald-100 dark:selection:bg-emerald-900/40 ${isDark ? 'dark' : ''}`}>
       {loading && <div className="fixed inset-x-0 top-0 h-1 bg-emerald-500 animate-pulse z-[1000]" />}
 
-      {authLoading ? (
-        <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-           <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
-        </div>
-      ) : !user ? (
-        <AuthPage onAuthSuccess={(u) => { setUser(u); setIsPremium(u.is_premium); }} />
+      {!isLoggedIn ? (
+        <LoginPage onLogin={() => setIsLoggedIn(true)} isDark={isDark} toggleDark={() => setIsDark(d => !d)} />
       ) : (
         <>
           {/* ── SIDEBAR ── */}
@@ -568,9 +518,8 @@ export default function App() {
                 <span className="font-bold text-sm text-slate-800 dark:text-slate-100">HPP Master</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{isPremium ? 'PREMIUM USER' : 'FREE USER'}</p>
-                <p className="text-sm font-black text-slate-900 dark:text-white truncate">{user.name || 'Bisnis Anda'}</p>
-                <p className="text-[10px] text-slate-400 truncate">{user.email}</p>
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">USER AKTIF</p>
+                <p className="text-sm font-black text-slate-900 dark:text-white truncate">Owner HPP</p>
               </div>
             </div>
 
@@ -649,7 +598,7 @@ export default function App() {
                       </div>
                       <div className="pt-2">
                          <button onClick={() => {
-                           const msg = `Halo Admin HPP Master, saya ingin upgrade ke Premium untuk usaha "${user.name}". Tolong info metode pembayarannya ya.`;
+                           const msg = `Halo Admin HPP Master, saya ingin upgrade ke Premium. Tolong info metode pembayarannya ya.`;
                            window.open(`https://wa.me/6283871829666?text=${encodeURIComponent(msg)}`, '_blank');
                          }} className="w-full bg-slate-900 dark:bg-emerald-500 text-white font-black py-4 rounded-2xl shadow-xl transition-all active:scale-95">Upgrade Sekarang — 39rb/bln</button>
                          <button onClick={() => setShowPremiumModal(false)} className="w-full text-xs font-bold text-slate-400 hover:text-slate-600 mt-4 py-2">Mungkin Nanti</button>
