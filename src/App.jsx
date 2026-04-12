@@ -145,7 +145,16 @@ const Input = ({ label, type = 'text', prefix, suffix, onChange, ...props }) => 
           inputMode={isNumeric ? 'decimal' : props.inputMode}
           className="flex-1 bg-transparent text-sm font-medium text-slate-800 dark:text-slate-100 outline-none min-w-0 placeholder:text-slate-300"
           value={displayValue}
-          onChange={handleChange}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (isNumeric) {
+              if (val === '' || /^\d*\.?\d*$/.test(val)) {
+                onChange(e);
+              }
+            } else {
+              onChange(e);
+            }
+          }}
           onFocus={(e) => e.target.select()}
         />
         {suffix && <span className="text-slate-400 text-xs shrink-0">{suffix}</span>}
@@ -157,7 +166,7 @@ const Input = ({ label, type = 'text', prefix, suffix, onChange, ...props }) => 
 const Stat = ({ label, value, sub, accent = false, small = false, tip = null, premium = false, onLockClick }) => (
   <div className={`rounded-xl p-4 border relative group overflow-hidden ${accent ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800' : 'bg-white dark:bg-slate-800/60 border-slate-100 dark:border-slate-700/60'}`}>
     {premium && (
-      <div className="absolute inset-0 z-10 bg-white/40 dark:bg-slate-900/40 backdrop-blur-[1px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="absolute inset-0 z-10 bg-white/40 dark:bg-slate-900/40 backdrop-blur-[1px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
         <button onClick={onLockClick} className="bg-slate-900 dark:bg-emerald-500 text-white text-[8px] font-black px-2 py-1 rounded-lg">UPGRADE</button>
       </div>
     )}
@@ -385,8 +394,8 @@ const NAV = [
 
 // ─── MAIN APP ─────────────────────────────────────────────
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isDark, setIsDark] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('hpp_logged_in') === 'true');
+  const [isDark, setIsDark] = useState(() => localStorage.getItem('hpp_theme') === 'dark');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
   const [products, setProducts] = useState([]);
@@ -398,7 +407,12 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
+    localStorage.setItem('hpp_theme', isDark ? 'dark' : 'light');
   }, [isDark]);
+
+  useEffect(() => {
+    localStorage.setItem('hpp_logged_in', isLoggedIn);
+  }, [isLoggedIn]);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -441,10 +455,10 @@ export default function App() {
   const m = useMemo(() => calcMetrics(active), [active]);
 
   const update = (field, val) => {
+    if (!active) return;
     const newProducts = products.map(p => p.id === active.id ? { ...p, [field]: val } : p);
     setProducts(newProducts);
     
-    // Sync to DB
     const sync = async () => {
       try {
         await axios.post(`${API_BASE}/products/${active.id}`, { ...active, [field]: val });
@@ -562,12 +576,19 @@ export default function App() {
             {/* Mobile Header */}
             <div className="md:hidden flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-50">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 bg-emerald-500 rounded-lg flex items-center justify-center"><Calculator className="w-4 h-4 text-white" /></div>
-                <span className="font-bold text-sm text-slate-800 dark:text-slate-100">HPP Master</span>
+                <button onClick={() => setShowMobileMenu(true)} className="p-2 -ml-2 rounded-lg text-slate-400 hover:text-emerald-500 transition-colors">
+                  <Menu className="w-5 h-5" />
+                </button>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-6 h-6 bg-emerald-500 rounded-lg flex items-center justify-center"><Calculator className="w-3.5 h-3.5 text-white" /></div>
+                  <span className="font-bold text-xs text-slate-800 dark:text-slate-100 truncate max-w-[120px]">{active?.name || 'HPP Master'}</span>
+                </div>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => setIsDark(d => !d)} className="p-2 rounded-lg text-slate-400"><Sun className="w-4 h-4" /></button>
-                <button onClick={handleLogout} className="p-2 rounded-lg text-slate-400 hover:text-red-500"><LogOut className="w-4 h-4" /></button>
+                <button onClick={() => setIsDark(d => !d)} className="p-2 rounded-lg text-slate-400">
+                  {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                </button>
+                <button onClick={handleLogout} className="p-2 rounded-lg text-slate-400 hover:text-red-500 transition-colors"><LogOut className="w-4 h-4" /></button>
               </div>
             </div>
 
@@ -756,6 +777,51 @@ export default function App() {
               </AnimatePresence>
             </div>
           </main>
+
+          {/* ── MOBILE PRODUCT MENU DRAWER ── */}
+          <AnimatePresence>
+            {showMobileMenu && (
+              <div className="fixed inset-0 z-[1000] md:hidden">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowMobileMenu(false)} className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" />
+                <motion.div initial={{ x: -280 }} animate={{ x: 0 }} exit={{ x: -280 }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="absolute inset-y-0 left-0 w-72 bg-white dark:bg-slate-900 border-r border-slate-100 dark:border-slate-800 shadow-2xl flex flex-col">
+                  <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 bg-emerald-500 rounded-lg flex items-center justify-center"><Calculator className="w-4 h-4 text-white" /></div>
+                      <span className="font-extrabold text-sm text-slate-800 dark:text-slate-100">Daftar Produk</span>
+                    </div>
+                    <button onClick={() => setShowMobileMenu(false)} className="p-2 -mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"><X className="w-5 h-5" /></button>
+                  </div>
+                  
+                  <div className="flex-1 overflow-y-auto p-4 space-y-2 no-scrollbar">
+                    {products.map(p => (
+                      <button key={p.id} onClick={() => { setActiveId(p.id); setShowMobileMenu(false); }}
+                        className={`w-full flex items-center justify-between p-4 rounded-2xl text-left border transition-all ${p.id === activeId ? 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-100 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 shadow-sm' : 'bg-white dark:bg-slate-800/40 border-slate-50 dark:border-slate-700/60 text-slate-600 dark:text-slate-400'}`}>
+                        <div className="flex flex-col flex-1 min-w-0 pr-4">
+                          <span className="font-bold text-sm truncate">{p.name}</span>
+                          <span className="text-[10px] font-medium opacity-60">ID: {p.id.slice(-6)}</span>
+                        </div>
+                        {products.length > 1 && (
+                          <button onClick={(e) => { e.stopPropagation(); deleteProduct(p.id); }} className="p-2 -mr-2 text-slate-300 hover:text-red-500 transition-colors">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </button>
+                    ))}
+                    
+                    <button onClick={() => { addProduct(); setShowMobileMenu(false); }} className="w-full flex items-center justify-center gap-2 py-4 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 text-slate-400 hover:text-emerald-500 hover:border-emerald-200 transition-all font-bold text-sm">
+                      <Plus className="w-4 h-4" /> Tambah Produk Baru
+                    </button>
+                  </div>
+
+                  <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
+                    <button onClick={handleLogout} className="flex items-center gap-3 text-slate-400 hover:text-red-500 transition-colors text-xs font-bold">
+                      <LogOut className="w-4 h-4" /> Keluar dari Akun
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            )}
+          </AnimatePresence>
 
           {/* ── MOBILE BOTTOM NAV ── */}
           <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex items-center justify-around py-2 px-1 z-50 safe-area-pb">
